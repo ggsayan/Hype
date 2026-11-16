@@ -1,8 +1,8 @@
 const planFields = [
-  { key: "amount", label: "Monthly Investment (₹)", min: 1000, max: 250000, step: 1000 },
-  { key: "lumpsum", label: "Lump Sum (₹)", min: 0, max: 2500000, step: 10000 },
-  { key: "stepup", label: "Annual Step-up (%)", min: 0, max: 50, step: 1 },
-  { key: "rate", label: "Expected Return (%)", min: 1, max: 30, step: 0.5 },
+  { key: "amount", label: "Monthly Investment (₹)", min: 1000, max: 500000, step: 1000 },
+  { key: "lumpsum", label: "Lump Sum (₹)", min: 0, max: 10000000, step: 10000 },
+  { key: "stepup", label: "Annual Step-up (%)", min: 0, max: 25, step: 1 },
+  { key: "rate", label: "Expected Return (%)", min: 0, max: 25, step: 0.5 },
 ];
 
 /**
@@ -23,7 +23,7 @@ const defaults = {
     field.innerHTML = `
       <div class="field-head">
         <label for="${id}">${f.label}</label>
-        <input type="number" id="${id}" value="${value}" min="${f.min}" step="${f.step}" />
+        <input type="number" id="${id}" value="${value}" min="${f.min}" max="${f.max}" step="${f.step}" />
       </div>
       <input type="range" id="${id}-range" min="${f.min}" max="${f.max}" step="${f.step}" value="${value}"
         aria-label="Plan ${plan.toUpperCase()} ${f.label}" />`;
@@ -32,10 +32,35 @@ const defaults = {
 });
 
 const ids = [...["a", "b"].flatMap((p) => planFields.map((f) => `${p}-${f.key}`)), "years", "inflation"];
-const valueChartEl = document.getElementById("value-chart");
-const realChartEl = document.getElementById("real-chart");
+const chartEl = document.getElementById("compare-chart");
 
 let last = null; // { a, b, years } from the latest calculation
+
+/**
+ * The two views, chosen with the tabs at the top of the results.
+ * In today's money, every payment is counted at its value in today's money when it was made,
+ * so the invested amount and the value can be compared directly.
+ */
+const VIEW_MODES = {
+  total: {
+    valueKey: "value",
+    investedKey: "invested",
+    valueLabel: "Total value",
+    investedLabel: "Total invested",
+    returnsLabel: "Returns",
+    gainLabel: "Total gain",
+  },
+  real: {
+    valueKey: "real",
+    investedKey: "realInvested",
+    valueLabel: "In today's money",
+    investedLabel: "Invested (today's money)",
+    returnsLabel: "Real returns",
+    gainLabel: "Real gain",
+  },
+};
+
+let viewMode = "total";
 
 function readPlan(p, years, inflation) {
   const P = parseFloat(document.getElementById(`${p}-amount`).value);
@@ -65,8 +90,7 @@ function update() {
 
   if (!a || !b) {
     last = null;
-    valueChartEl.innerHTML = "";
-    realChartEl.innerHTML = "";
+    chartEl.innerHTML = "";
     document.getElementById("compare-body").innerHTML = "";
     return;
   }
@@ -78,56 +102,38 @@ function update() {
 }
 
 /**
- * Two charts on the same scale. Colour = plan; in the first chart, dotted = amount invested.
- *   1. Total value (solid) and amount invested (dotted)
- *   2. Total value in today's money
+ * One chart for the selected view. Colour = plan; solid = value, dotted = amount invested.
  */
 function drawCharts() {
   if (!last) return;
   const { a, b, years } = last;
+  const mode = VIEW_MODES[viewMode];
   const colorA = cssVar("--plan-a");
   const colorB = cssVar("--plan-b");
   const values = (plan, key) => plan.data.map((d) => d[key]);
-  const yMax = niceMax(Math.max(a.data[years].value, b.data[years].value));
-  const title = (yr) => `<div class="tt-title">After ${yr} year${yr === 1 ? "" : "s"}</div>`;
-  const gapRow = (yr, key) =>
-    `<div class="tt-row tt-gap">B − A<b>${formatSigned(b.data[yr][key] - a.data[yr][key])}</b></div>`;
 
-  drawLineChart(valueChartEl, {
+  drawLineChart(chartEl, {
     years,
-    yMax,
-    ariaLabel: "Line chart of total value and amount invested for Plan A and Plan B by year",
+    height: 300,
+    ariaLabel: `Line chart of ${mode.valueLabel.toLowerCase()} and amount invested for Plan A and Plan B by year`,
     series: [
-      { values: values(b, "invested"), color: colorB, dash: "2 4" },
-      { values: values(a, "invested"), color: colorA, dash: "2 4" },
-      { values: values(b, "value"), color: colorB },
-      { values: values(a, "value"), color: colorA },
+      { values: values(b, mode.investedKey), color: colorB, dash: "2 4" },
+      { values: values(a, mode.investedKey), color: colorA, dash: "2 4" },
+      { values: values(b, mode.valueKey), color: colorB },
+      { values: values(a, mode.valueKey), color: colorA },
     ],
     tooltip: (yr) => {
       const block = (name, cls, plan) =>
         `<div class="tt-plan"><i class="swatch ${cls}"></i>${name}</div>` +
-        tooltipRow(`line style-solid ${cls}`, "Total value", formatINR(plan.data[yr].value)) +
-        tooltipRow(`line style-dotted ${cls}`, "Invested", formatINR(plan.data[yr].invested));
-      return title(yr) + block("Plan A", "plan-a", a) + block("Plan B", "plan-b", b) + gapRow(yr, "value");
-    },
-  });
-
-  drawLineChart(realChartEl, {
-    years,
-    yMax,
-    ariaLabel: "Line chart of total value in today's money and amount invested for Plan A and Plan B by year",
-    series: [
-      { values: values(b, "invested"), color: colorB, dash: "2 4" },
-      { values: values(a, "invested"), color: colorA, dash: "2 4" },
-      { values: values(b, "real"), color: colorB },
-      { values: values(a, "real"), color: colorA },
-    ],
-    tooltip: (yr) => {
-      const block = (name, cls, plan) =>
-        `<div class="tt-plan"><i class="swatch ${cls}"></i>${name}</div>` +
-        tooltipRow(`line style-solid ${cls}`, "In today's money", formatINR(plan.data[yr].real)) +
-        tooltipRow(`line style-dotted ${cls}`, "Invested", formatINR(plan.data[yr].invested));
-      return title(yr) + block("Plan A", "plan-a", a) + block("Plan B", "plan-b", b) + gapRow(yr, "real");
+        tooltipRow(`line style-solid ${cls}`, mode.valueLabel, formatINR(plan.data[yr][mode.valueKey])) +
+        tooltipRow(`line style-dotted ${cls}`, "Invested", formatINR(plan.data[yr][mode.investedKey]));
+      const gap = b.data[yr][mode.valueKey] - a.data[yr][mode.valueKey];
+      return (
+        `<div class="tt-title">After ${yr} year${yr === 1 ? "" : "s"}</div>` +
+        block("Plan A", "plan-a", a) +
+        block("Plan B", "plan-b", b) +
+        `<div class="tt-row tt-gap">B − A<b>${formatSigned(gap)}</b></div>`
+      );
     },
   });
 }
@@ -136,15 +142,31 @@ function drawTable() {
   const { a, b, years } = last;
   const ea = a.data[years];
   const eb = b.data[years];
+  const mode = VIEW_MODES[viewMode];
+  const R = Math.round;
 
   const rows = [
-    ["Monthly SIP (year 1)", a.P, b.P],
-    [`Monthly SIP (year ${years})`, ea.payment, eb.payment],
-    ["Lump sum", a.lumpSum, b.lumpSum],
-    ["Total invested", ea.invested, eb.invested],
-    ["Returns", ea.value - ea.invested, eb.value - eb.invested],
-    ["Total value", ea.value, eb.value, true],
-    ["In today's money", ea.real, eb.real],
+    // Money rows use whole rupees, so returns and differences add up exactly to the amounts shown
+    ["Monthly SIP (year 1)", R(a.P), R(b.P)],
+    [`Monthly SIP (year ${years})`, R(ea.payment), R(eb.payment)],
+    ["Lump sum", R(a.lumpSum), R(b.lumpSum)],
+    [mode.investedLabel, R(ea[mode.investedKey]), R(eb[mode.investedKey])],
+    [
+      mode.returnsLabel,
+      R(ea[mode.valueKey]) - R(ea[mode.investedKey]),
+      R(eb[mode.valueKey]) - R(eb[mode.investedKey]),
+      false,
+      formatINRSigned, // real returns can be negative when returns don't beat inflation
+    ],
+    [mode.valueLabel, R(ea[mode.valueKey]), R(eb[mode.valueKey]), true],
+    [
+      mode.gainLabel,
+      gainPercent(ea[mode.valueKey], ea[mode.investedKey]),
+      gainPercent(eb[mode.valueKey], eb[mode.investedKey]),
+      false,
+      formatPercent,
+      (v) => formatPercent(v).replace("%", " pts"),
+    ],
   ];
 
   const body = document.getElementById("compare-body");
@@ -163,12 +185,12 @@ function drawTable() {
     });
   }
 
-  rows.forEach(([label, va, vb], r) => {
+  rows.forEach(([label, va, vb, , format = formatINR, diffFormat = formatSigned], r) => {
     const cells = body.rows[r].cells;
     cells[0].textContent = label;
-    animateNumber(cells[1], va, formatINR);
-    animateNumber(cells[2], vb, formatINR);
-    animateNumber(cells[3], vb - va, formatSigned);
+    animateNumber(cells[1], va, format);
+    animateNumber(cells[2], vb, format);
+    animateNumber(cells[3], vb - va, diffFormat);
   });
 }
 
@@ -183,6 +205,14 @@ document.getElementById("reset").addEventListener("click", () => {
 });
 
 // Redraw the charts when their width changes
-onWidthChange(valueChartEl, drawCharts);
+onWidthChange(chartEl, drawCharts);
+
+// Tabs at the top switch the chart and the table between total value and today's money
+wireViewTabs((mode) => {
+  viewMode = mode;
+  document.getElementById("legend-value").textContent = VIEW_MODES[mode].valueLabel;
+  drawCharts();
+  if (last) drawTable();
+});
 
 initTheme(update); // sets the theme button's label and draws everything

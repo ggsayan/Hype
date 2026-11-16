@@ -5,6 +5,28 @@ function formatINR(value) {
 }
 
 /**
+ * "₹1,234" or "−₹1,234"
+ */
+function formatINRSigned(v) {
+  return v < -0.5 ? "−" + formatINR(-v) : formatINR(Math.max(0, v));
+}
+
+/**
+ * Percentage with a sign: "+76.4%", "−3.2%"
+ */
+function formatPercent(value) {
+  const r = Math.round(value * 10) / 10;
+  return (r > 0 ? "+" : r < 0 ? "−" : "") + Math.abs(r).toFixed(1) + "%";
+}
+
+/**
+ * Gain as a percentage of what was put in (0 when nothing was put in)
+ */
+function gainPercent(value, invested) {
+  return invested > 0 ? ((value - invested) / invested) * 100 : 0;
+}
+
+/**
  * Short axis labels: ₹50K, ₹4.5L, ₹1.25Cr
  */
 function formatCompact(value) {
@@ -32,26 +54,33 @@ function formatWords(value) {
  * - The monthly payment `P` rises by `stepUp` (e.g. 0.1 = 10%) at the start of every year.
  * - Each payment is made at the start of the month, then grows at monthly rate `i`.
  * - `inflation` (e.g. 0.06 = 6%) discounts each year's value back to today's money.
+ * - `realInvested` is each payment counted at what it was worth in today's money
+ *   when it was made, so it can be compared with `real`.
  * Returns one point per year, starting at year 0.
  */
 function simulateSIP(P, lumpSum, i, stepUp, inflation, years) {
   const points = [
-    { payment: 0, invested: lumpSum, value: lumpSum, real: lumpSum },
+    { payment: 0, invested: lumpSum, value: lumpSum, real: lumpSum, realInvested: lumpSum },
   ];
   let invested = lumpSum;
+  let realInvested = lumpSum;
   let value = lumpSum;
   let payment = P;
+  let monthIndex = 0;
 
   for (let yr = 1; yr <= years; yr++) {
     for (let month = 0; month < 12; month++) {
       invested += payment;
+      realInvested += payment / Math.pow(1 + inflation, monthIndex / 12);
       value = (value + payment) * (1 + i);
+      monthIndex++;
     }
     points.push({
       payment,
       invested,
       value,
       real: value / Math.pow(1 + inflation, yr),
+      realInvested,
     });
     payment *= 1 + stepUp;
   }
@@ -215,16 +244,16 @@ function setStaticText(node, text) {
  *            `dash` is an SVG dash pattern, e.g. "5 4" (dashed) or "2 4" (dotted)
  *   tooltip: (year) => HTML for the hover tooltip
  *   yMax:    optional top of the y axis, to give several charts the same scale
+ *   height:  optional chart height in pixels (default 240)
  */
 function drawLineChart(
   container,
-  { years, series, tooltip, ariaLabel, yMax: fixedMax },
+  { years, series, tooltip, ariaLabel, yMax: fixedMax, height = 240 },
 ) {
   container.innerHTML = "";
   if (!series) return;
 
   const width = container.clientWidth;
-  const height = 240;
   const m = { top: 8, right: 8, bottom: 26, left: 52 };
   const w = width - m.left - m.right;
   const h = height - m.top - m.bottom;
@@ -510,6 +539,40 @@ function onWidthChange(node, redraw) {
 }
 
 /**
+ * The "Total value / In today's money" tabs in `.view-bar`, which control `#charts-panel`.
+ * Calls `onChange(mode)` with "total" or "real" when the selected tab changes,
+ * and shows `#view-note` only in the today's-money view.
+ * Arrow keys move between tabs, as is usual for tab controls.
+ */
+function wireViewTabs(onChange) {
+  const tabs = [...document.querySelectorAll('.view-bar [role="tab"]')];
+  const panel = document.getElementById("charts-panel");
+  const note = document.getElementById("view-note");
+
+  const select = (tab, focus = false) => {
+    tabs.forEach((t) => {
+      const on = t === tab;
+      t.setAttribute("aria-selected", on);
+      t.tabIndex = on ? 0 : -1;
+    });
+    panel.setAttribute("aria-labelledby", tab.id);
+    if (note) note.hidden = tab.dataset.mode !== "real";
+    if (focus) tab.focus();
+    onChange(tab.dataset.mode);
+  };
+
+  tabs.forEach((tab, idx) => {
+    tab.addEventListener("click", () => select(tab));
+    tab.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      e.preventDefault();
+      const next = tabs[(idx + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      select(next, true);
+    });
+  });
+}
+
+/**
  * Smoothly open and close a <details> element. Its content must be wrapped in `.details-body`.
  */
 function animateDetails(details) {
@@ -559,25 +622,48 @@ function updateFill(range) {
 }
 
 /**
- * Keep each number box (#id) and its slider (#id-range) in sync, calling onChange on every edit
+ * Keep `value` within a number box's min and max (as text, "" left alone)
+ */
+function clampToLimits(input, value) {
+  if (value === "" || isNaN(parseFloat(value))) return value;
+  let v = parseFloat(value);
+  if (input.max !== "") v = Math.min(v, parseFloat(input.max));
+  if (input.min !== "") v = Math.max(v, parseFloat(input.min));
+  return String(v);
+}
+
+/**
+ * Keep each number box (#id) and its slider (#id-range) in sync, calling onChange on every edit.
+ * A value above the box's max snaps down straight away; one below its min is corrected when
+ * you leave the box, so you can still type e.g. "5000" one digit at a time.
  */
 function wireSliders(ids, onChange) {
   ids.forEach((id) => {
     const number = document.getElementById(id);
     const range = document.getElementById(id + "-range");
-    if (!range) {
-      number.addEventListener("input", onChange);
-      return;
-    }
 
-    range.addEventListener("input", () => {
-      number.value = range.value;
-      updateFill(range);
+    number.addEventListener("input", () => {
+      if (number.max !== "" && parseFloat(number.value) > parseFloat(number.max)) number.value = number.max;
+      if (range && number.value !== "") range.value = number.value; // slider clamps to its own min/max
+      if (range) updateFill(range);
       onChange();
     });
 
-    number.addEventListener("input", () => {
-      if (number.value !== "") range.value = number.value; // slider clamps to its own min/max
+    number.addEventListener("change", () => {
+      const fixed = clampToLimits(number, number.value);
+      if (fixed === number.value) return;
+      number.value = fixed;
+      if (range) {
+        range.value = fixed;
+        updateFill(range);
+      }
+      onChange();
+    });
+
+    if (!range) return;
+
+    range.addEventListener("input", () => {
+      number.value = range.value;
       updateFill(range);
       onChange();
     });
@@ -619,9 +705,10 @@ function loadFromURL(ids) {
   ids.forEach((id) => {
     const value = params.get(id);
     if (value !== null && value !== "" && !isNaN(parseFloat(value))) {
-      document.getElementById(id).value = value;
+      const input = document.getElementById(id);
+      input.value = clampToLimits(input, value); // links can't go past the limits either
       const range = document.getElementById(id + "-range");
-      if (range) range.value = value;
+      if (range) range.value = input.value;
     }
   });
 }

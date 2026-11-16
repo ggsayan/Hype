@@ -62,7 +62,7 @@
                   <label for="years">Time Period (Years)</label>
                   <button type="button" class="info" aria-label="About Time Period" data-info="Both plans run for the same number of years, so they can be compared fairly.">i</button>
                 </div>
-                <input type="number" id="years" value="15" min="1" />
+                <input type="number" id="years" value="15" min="1" max="40" />
               </div>
               <input type="range" id="years-range" min="1" max="40" step="1" value="15" aria-label="Time Period" />
             </div>
@@ -82,39 +82,30 @@
         </div>
       </section>
 
-      <section class="card">
-        <div class="chart-pair">
-        <div class="chart-block">
-          <div class="chart-head">
-            <div>
-              <h2>Total value</h2>
-              <p class="chart-sub">What each plan is worth, compared with what you put in</p>
-            </div>
-            <div class="legend">
-              <span><i class="swatch plan-a"></i>Plan A</span>
-              <span><i class="swatch plan-b"></i>Plan B</span>
-              <span><i class="swatch line style-solid"></i>Total value</span>
-              <span><i class="swatch line style-dotted"></i>Invested</span>
-            </div>
+      <section class="card charts">
+        <!-- Switches the chart and the table between total value and today's money -->
+        <div class="view-bar">
+          <div class="tabs" role="tablist" aria-label="Show values as">
+            <button type="button" class="tab" role="tab" id="view-tab-total" aria-selected="true" aria-controls="charts-panel" data-mode="total">Total value</button>
+            <button type="button" class="tab" role="tab" id="view-tab-real" aria-selected="false" aria-controls="charts-panel" data-mode="real" tabindex="-1">In today's money</button>
           </div>
-          <div class="chart" id="value-chart"></div>
+          <p class="view-note" id="view-note" hidden>
+            Adjusted for inflation. Each payment is counted at its value in today's money when it was made.
+          </p>
         </div>
 
-        <div class="chart-block second">
+        <div class="charts-panel" id="charts-panel" role="tabpanel" aria-labelledby="view-tab-total">
+        <div class="chart-block">
           <div class="chart-head">
-            <div>
-              <h2>In today's money</h2>
-              <p class="chart-sub">Total value adjusted for inflation, on the same scale as the Total value chart</p>
-            </div>
+            <h2>Growth over time</h2>
             <div class="legend">
               <span><i class="swatch plan-a"></i>Plan A</span>
               <span><i class="swatch plan-b"></i>Plan B</span>
-              <span><i class="swatch line style-solid"></i>In today's money</span>
+              <span><i class="swatch line style-solid"></i><span id="legend-value">Total value</span></span>
               <span><i class="swatch line style-dotted"></i>Invested</span>
             </div>
           </div>
-          <div class="chart" id="real-chart"></div>
-        </div>
+          <div class="chart" id="compare-chart"></div>
         </div>
 
         <div class="table-wrap compare-table">
@@ -130,6 +121,7 @@
             </thead>
             <tbody id="compare-body"></tbody>
           </table>
+        </div>
         </div>
 
         <div class="card-actions">
