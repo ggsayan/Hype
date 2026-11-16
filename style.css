@@ -21,32 +21,6 @@
   --series-value: var(--accent);
 }
 
-/* Light theme: same layout, one accent (a deeper emerald so it reads on white) */
-:root[data-theme="light"] {
-  color-scheme: light;
-
-  --bg: #f4f4f5;
-  --surface: #ffffff;
-  --border: #e4e4e7;
-  --grid: #efeff1;
-  --text: #18181b;
-  --muted: #6b6b76;
-
-  --accent: #059669;
-  --accent-hover: #047857;
-  --accent-glow: rgba(5, 150, 105, 0.18);
-
-  --tooltip-bg: #ffffff;
-  --row-hover: #f6f6f7;
-  --shadow: rgba(0, 0, 0, 0.12);
-
-  --series-invested: #8b93a1;
-}
-
-body {
-  transition: background-color 0.2s, color 0.2s;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -93,66 +67,6 @@ button {
   gap: 8px;
 }
 
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 8px;
-}
-
-.icon-moon {
-  display: none;
-}
-
-:root[data-theme="light"] .icon-sun {
-  display: none;
-}
-
-:root[data-theme="light"] .icon-moon {
-  display: block;
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.card-actions {
-  flex-wrap: wrap;
-}
-
-.card-actions .ghost-btn {
-  flex: 1;
-  padding: 8px 12px;
-  text-align: center;
-  text-decoration: none;
-}
-
-.card-actions .wide-link {
-  flex-basis: 100%;
-}
-
-:root {
-  --plan-a: var(--accent);
-  --plan-b: var(--series-invested);
-}
-
-.back-link {
-  display: inline-block;
-  margin-bottom: 6px;
-  font-size: 13px;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.back-link:hover,
-.back-link:focus-visible {
-  color: var(--accent);
-}
-
 h3 {
   display: flex;
   align-items: center;
@@ -160,162 +74,6 @@ h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-}
-
-/* Compare page: a wider inputs column, so Plan A and Plan B fit side by side */
-.layout.compare {
-  grid-template-columns: 560px minmax(0, 1fr);
-}
-
-.plans {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 32px;
-  margin-top: 20px;
-}
-
-.plan h3 + div > .field:first-child {
-  margin-top: 12px;
-}
-
-/* The shared settings sit under both plans */
-.plan.shared {
-  grid-column: 1 / -1;
-  margin-top: 22px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.shared-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 32px;
-}
-
-/* Not enough room beside the inputs: everything stacks */
-@media (max-width: 1100px) {
-  .layout.compare {
-    grid-template-columns: minmax(0, 1fr);
-    max-width: 760px;
-  }
-}
-
-@media (max-width: 560px) {
-  .plans,
-  .shared-fields {
-    grid-template-columns: 1fr;
-  }
-
-  .plan + .plan {
-    margin-top: 22px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
-}
-
-.plan {
-  min-width: 0;
-}
-
-/* Compare page: the summary and chart cards under the tabs */
-.side-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.side > .view-bar {
-  margin-bottom: 0;
-}
-
-/* Year-by-year comparison: two header rows (plan, then column), kept together while scrolling */
-.grouped thead {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.grouped thead th {
-  position: static;
-}
-
-.grouped .group-row th[scope="colgroup"] {
-  text-align: center;
-  color: var(--text);
-  font-weight: 600;
-  border-left: 1px solid var(--border);
-}
-
-.grouped .group-row th[scope="colgroup"] .swatch {
-  margin-right: 6px;
-}
-
-.grouped tr:not(.group-row) th:nth-child(1),
-.grouped tr:not(.group-row) th:nth-child(5),
-.grouped tbody td:nth-child(2),
-.grouped tbody td:nth-child(6),
-.grouped tbody td:nth-child(10) {
-  border-left: 1px solid var(--border);
-}
-
-.grouped .group-row th[rowspan] {
-  vertical-align: bottom;
-}
-
-.grouped .group-row th:last-child {
-  border-left: 1px solid var(--border);
-}
-
-.swatch.plan-a {
-  --sw: var(--plan-a);
-  background: var(--plan-a);
-}
-
-.swatch.plan-b {
-  --sw: var(--plan-b);
-  background: var(--plan-b);
-}
-
-/* Line-style swatches: solid = value, dotted = amount invested.
-   They take the plan colour when combined with .plan-a / .plan-b, otherwise muted. */
-.swatch.line.style-solid {
-  background: var(--sw, var(--muted));
-}
-
-.swatch.line.style-dotted {
-  background: repeating-linear-gradient(to right, var(--sw, var(--muted)) 0 2px, transparent 2px 5px);
-}
-
-.tt-plan {
-  margin-top: 8px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.tt-plan + .tt-row {
-  margin-top: 2px;
-}
-
-.tt-gap {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-}
-
-.compare-table {
-  max-height: none;
-}
-
-.compare-table tbody th {
-  color: var(--muted);
-}
-
-.compare-table tr.key > * {
-  font-weight: 700;
-  color: var(--text);
 }
 
 .table-actions {
@@ -338,8 +96,8 @@ body {
   margin: 0;
   padding: 16px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
 }
 
 .layout {
@@ -359,22 +117,7 @@ body {
     align-items: stretch;
   }
 
-  .layout > .card:first-child {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .layout > .card:first-child > .card-actions {
-    margin-top: auto;
-  }
-
-  .layout > .card:first-child > :nth-last-child(2) {
-    margin-bottom: 20px;
-  }
-
-  .side > .card:last-child,
-  .side > .side-panel,
-  .side-panel > .card:last-child {
+  .side > .card:last-child {
     flex: 1;
   }
 }
@@ -522,12 +265,20 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 /* Headline: total value at the end */
 .result-hero {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
   padding: 14px 16px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 10px;
+}
+
+.hero-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .result-hero .label-wrap {
@@ -587,8 +338,9 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 
 /* With room to spare, the three groups sit side by side under the headline */
 @container (min-width: 600px) {
+  /* Three groups, or four when withdrawals are shown */
   .result {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     column-gap: 24px;
   }
 
@@ -724,9 +476,49 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   background: var(--series-value);
 }
 
+/* Pie with its legend beside it; on phones, and when the pie sits beside the line chart, the legend goes below */
 .pie-wrap {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
+@media (max-width: 420px) {
+  .pie-wrap {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .pie-wrap .legend {
+    width: 100%;
+    max-width: 260px;
+  }
+}
+
+.legend.vertical {
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.legend.vertical .row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.legend.vertical .val {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.legend.vertical .pct {
+  grid-column: 2 / 4;
+  margin-top: -6px;
+  font-size: 12px;
 }
 
 #pie-chart {
@@ -787,8 +579,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 
 .table-wrap {
   margin-top: 8px;
-  max-height: 360px;
-  overflow: auto;
+  overflow-x: auto; /* the whole table shows; only phones scroll it sideways */
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -823,8 +614,6 @@ td:first-child {
 }
 
 thead th {
-  position: sticky;
-  top: 0;
   background: var(--surface);
   color: var(--muted);
   font-weight: 500;
@@ -909,14 +698,11 @@ tbody th {
   animation: card-in 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
-.layout > .card:nth-child(2),
-.side > .card:nth-child(1),
-.side-panel > .card:nth-child(1) {
+.side > .card:nth-child(1) {
   animation-delay: 0.09s;
 }
 
-.side > .card:nth-child(2),
-.side-panel > .card:nth-child(2) {
+.side > .card:nth-child(2) {
   animation-delay: 0.18s;
 }
 
@@ -1003,7 +789,351 @@ tbody th {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 200px;
     gap: 32px;
-    align-items: start;
+    align-items: stretch;
+  }
+
+  .pie-wrap {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 18px;
+  }
+
+  .pie-wrap .legend {
+    width: 100%;
   }
 }
 
+/* When the charts card is stretched to match the inputs, the line chart grows into the extra room
+   (script.js measures #line-chart before drawing) */
+.charts > .charts-panel {
+  flex: 1;
+}
+
+.charts-panel > .chart-block:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+#line-chart {
+  flex: 1;
+  min-height: 200px;
+}
+
+/* Small "% / ₹" switch beside the step-up label */
+.unit-toggle {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.unit-toggle button {
+  min-width: 24px;
+  padding: 1px 7px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.unit-toggle button:hover {
+  color: var(--text);
+}
+
+.unit-toggle button[aria-pressed="true"] {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.unit-toggle button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Inputs card: "1 Investing" and "2 After investing", each with a numbered heading */
+.input-section {
+  margin-top: 22px;
+}
+
+.input-section + .input-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.section-step {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.section-tag {
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.section-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.section-head + .field {
+  margin-top: 16px;
+}
+
+/* Milestone markers on the growth chart */
+.chart .chart-marker-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.chart .chart-divider-label {
+  font-size: 10.5px;
+}
+
+@keyframes marker-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.chart-marker {
+  animation: marker-in 0.3s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-marker {
+    animation: none;
+  }
+}
+
+.tooltip .tt-milestone {
+  margin-top: 6px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Year-by-year table: a line where the withdrawal years start */
+tbody tr.phase-start > * {
+  border-top: 2px solid var(--accent) !important;
+}
+
+/* Keep "Step-up" on one line next to its % / ₹ switch */
+.label-wrap:has(.unit-toggle) label {
+  white-space: nowrap;
+}
+
+/* Narrower number boxes on phones */
+@media (max-width: 420px) {
+  input[type="number"] {
+    width: 100px;
+  }
+}
+
+/* On/off switches under the withdrawal box */
+.switches {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.switches[hidden] {
+  display: none;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.switch-track {
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background-color 0.2s;
+}
+
+.switch-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 0.2s;
+}
+
+.switch input:checked + .switch-track {
+  background: var(--accent);
+}
+
+.switch input:checked + .switch-track::after {
+  transform: translateX(12px);
+  background: var(--bg);
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.switch:hover {
+  color: var(--text);
+}
+
+.field-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch-track,
+  .switch-track::after {
+    transition: none;
+  }
+}
+
+/* Navbar: logo and name on the left, "Copy link" on the right */
+.navbar {
+  width: 100%;
+  max-width: 1280px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand img {
+  display: block;
+  border-radius: 8px;
+}
+
+.nav-copy {
+  padding: 7px 12px;
+}
+
+/* The navbar lines up with the page below it */
+@media (max-width: 760px) {
+  .navbar {
+    max-width: 480px;
+  }
+}
+
+/* Growth chart: labels at the end of the lines */
+.chart .chart-end-value {
+  font-size: 11.5px;
+  font-weight: 700;
+  fill: var(--series-value);
+}
+
+.chart .chart-end-invested {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--series-invested);
+}
+
+.chart .chart-end-gap {
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.chart .chart-end-gap-note {
+  font-size: 10px;
+}
+
+.tooltip .tt-sep {
+  margin: 6px 0 2px;
+  border-top: 1px solid var(--border);
+}
+
+/* A thin outline in the card colour keeps chart labels readable where they cross a line */
+.chart .chart-marker-label,
+.chart .chart-divider-label,
+.chart [class^="chart-end"] {
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}

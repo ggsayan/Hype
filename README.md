@@ -1,3 +1,3 @@
 # Hype
 
-A realistic calculator for SIPs (Systematic Investment Plans), for seeing what monthly investment could grow into and comparing plans side by side.
+A realistic calculator for SIPs (Systematic Investment Plans), for seeing what a monthly investment could grow into, and how long withdrawals from it could last.

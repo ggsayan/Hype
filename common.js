@@ -50,21 +50,19 @@ function formatWords(value) {
 
 /**
  * Step-up SIP, simulated month by month.
- * - `lumpSum` is invested once at the very start.
- * - The monthly payment `P` rises by `stepUp` (e.g. 0.1 = 10%) at the start of every year.
+ * - The monthly payment `P` rises at the start of every year, by `stepUp` (e.g. 0.1 = 10%)
+ *   and/or by a fixed `stepUpAmount` in rupees.
  * - Each payment is made at the start of the month, then grows at monthly rate `i`.
  * - `inflation` (e.g. 0.06 = 6%) discounts each year's value back to today's money.
  * - `realInvested` is each payment counted at what it was worth in today's money
  *   when it was made, so it can be compared with `real`.
  * Returns one point per year, starting at year 0.
  */
-function simulateSIP(P, lumpSum, i, stepUp, inflation, years) {
-  const points = [
-    { payment: 0, invested: lumpSum, value: lumpSum, real: lumpSum, realInvested: lumpSum },
-  ];
-  let invested = lumpSum;
-  let realInvested = lumpSum;
-  let value = lumpSum;
+function simulateSIP(P, i, stepUp, inflation, years, stepUpAmount = 0) {
+  const points = [{ payment: 0, invested: 0, value: 0, real: 0, realInvested: 0, withdrawn: 0, realWithdrawn: 0 }];
+  let invested = 0;
+  let realInvested = 0;
+  let value = 0;
   let payment = P;
   let monthIndex = 0;
 
@@ -81,10 +79,107 @@ function simulateSIP(P, lumpSum, i, stepUp, inflation, years) {
       value,
       real: value / Math.pow(1 + inflation, yr),
       realInvested,
+      withdrawn: 0,
+      realWithdrawn: 0,
     });
-    payment *= 1 + stepUp;
+    payment = payment * (1 + stepUp) + stepUpAmount;
   }
   return points;
+}
+
+/**
+ * Monthly withdrawals (SWP) once investing stops, carrying on from `start` (the last point of simulateSIP)
+ * after `startYear` years. The money stays invested at monthly rate `i`: each month it grows,
+ * then the withdrawal is taken out, until nothing is left or `maxYears` have passed.
+ * The first year's withdrawal is `W` a month; with `rise`, it goes up by `inflation` every year after that.
+ * `realWithdrawn` counts each withdrawal at its value in today's money.
+ * Returns { points: one per year of withdrawals, months: withdrawals made, ranOut }.
+ */
+function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false) {
+  const points = [];
+  let withdrawal = W;
+  let value = start.value;
+  let withdrawn = 0;
+  let realWithdrawn = 0;
+  let months = 0;
+  let monthIndex = startYear * 12;
+  let ranOut = false;
+
+  for (let yr = 1; yr <= maxYears && !ranOut; yr++) {
+    if (yr > 1 && rise) withdrawal *= 1 + inflation;
+    for (let month = 0; month < 12; month++) {
+      value *= 1 + i;
+      const take = Math.min(withdrawal, value);
+      value -= take;
+      monthIndex++;
+      withdrawn += take;
+      realWithdrawn += take / Math.pow(1 + inflation, monthIndex / 12);
+      months++;
+      if (value < 0.005) {
+        value = 0;
+        ranOut = true;
+        break;
+      }
+    }
+    points.push({
+      payment: 0,
+      invested: start.invested,
+      realInvested: start.realInvested,
+      value,
+      real: value / Math.pow(1 + inflation, startYear + yr),
+      withdrawn,
+      realWithdrawn,
+      withdrawal, // monthly withdrawal this year
+    });
+  }
+  return { points, months, ranOut };
+}
+
+/**
+ * "23 years 4 months", "1 year", "5 months"
+ */
+function formatDuration(months) {
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  const part = (n, word) => (n ? `${n} ${word}${n === 1 ? "" : "s"}` : "");
+  return [part(y, "year"), part(m, "month")].filter(Boolean).join(" ") || "0 months";
+}
+
+/**
+ * Points where a rising line first reaches a milestone, for markers on a chart.
+ * `values` has one number per year; `invested` (same length) is used for the "Doubled" marker (value twice what was put in).
+ * Returns up to `max` markers as { x: fractional year, value, label }, most important first
+ * (the chart skips any whose label would overlap one drawn before it).
+ */
+const MILESTONES = [1e5, 5e5, 1e6, 5e6, 1e7, 5e7, 1e8, 5e8, 1e9, 5e9, 1e10, 5e10, 1e11];
+
+function findMilestones(values, invested, max = 3) {
+  // First fractional year where f(year) goes from below 0 to 0 or above (straight lines between years)
+  const firstCrossing = (f) => {
+    for (let k = 1; k < values.length; k++) {
+      const a = f(k - 1);
+      const b = f(k);
+      if (a < 0 && b >= 0) return k - 1 + -a / (b - a);
+    }
+    return null;
+  };
+  const at = (x) => {
+    const lo = Math.floor(x);
+    const hi = Math.min(values.length - 1, lo + 1);
+    return values[lo] + (values[hi] - values[lo]) * (x - lo);
+  };
+
+  const found = [];
+  MILESTONES.forEach((level) => {
+    const x = firstCrossing((k) => values[k] - level);
+    if (x !== null) found.push({ x, value: level, label: formatCompact(level) });
+  });
+  found.reverse(); // biggest first
+
+  const doubled = firstCrossing((k) => (invested[k] > 0 ? values[k] - 2 * invested[k] : -1));
+  if (doubled !== null) found.splice(1, 0, { x: doubled, value: at(doubled), label: "Doubled" });
+
+  return found.slice(0, max);
 }
 
 function el(tag, attrs = {}, parent) {
@@ -139,7 +234,7 @@ function hideTooltip() {
 }
 
 /**
- * `swatch` is a class like "value" or "plan-a"; `style` is optional inline CSS for the row
+ * `swatch` is a class like "value" or "invested"; `style` is optional inline CSS for the row
  */
 function tooltipRow(swatch, label, value, style = "") {
   return `<div class="tt-row" style="${style}"><i class="swatch ${swatch}"></i>${label}<b>${value}</b></div>`;
@@ -245,16 +340,22 @@ function setStaticText(node, text) {
  *   tooltip: (year) => HTML for the hover tooltip
  *   yMax:    optional top of the y axis, to give several charts the same scale
  *   height:  optional chart height in pixels (default 240)
+ *   markers: optional [{ x: fractional year, value, label }] — labelled dots on the lines
+ *   divider: optional { x: year, label } — a dashed vertical line, e.g. where withdrawals start
+ *   ends:    optional { lines: [{ value, text, cls }], gap: [line1, line2] } — labels just past the
+ *            right end of the lines, with a bracket between the two and `gap` written beside it
+ *            (e.g. the final value, the amount invested, and the returns between them)
+ *   Series can also set `width` (line thickness, default 2).
  */
 function drawLineChart(
   container,
-  { years, series, tooltip, ariaLabel, yMax: fixedMax, height = 240 },
+  { years, series, tooltip, ariaLabel, yMax: fixedMax, height = 240, markers = [], divider = null, ends = null },
 ) {
   container.innerHTML = "";
   if (!series) return;
 
   const width = container.clientWidth;
-  const m = { top: 8, right: 8, bottom: 26, left: 52 };
+  const m = { top: 8, right: ends ? 70 : 8, bottom: 26, left: 52 }; // room on the right for end labels
   const w = width - m.left - m.right;
   const h = height - m.top - m.bottom;
 
@@ -348,7 +449,7 @@ function drawLineChart(
       {
         fill: "none",
         stroke: s.color,
-        "stroke-width": 2,
+        "stroke-width": s.width ?? 2,
         "stroke-linejoin": "round",
         "stroke-linecap": "round",
         ...(s.dash ? { "stroke-dasharray": s.dash } : {}),
@@ -426,6 +527,101 @@ function drawLineChart(
     };
     render(from, prev.yMax);
     container._anim = requestAnimationFrame(step);
+  }
+
+  // Divider: a dashed vertical line with a small label at the top
+  if (divider) {
+    const dx = x(divider.x);
+    el(
+      "line",
+      {
+        x1: dx,
+        x2: dx,
+        y1: m.top,
+        y2: m.top + h,
+        stroke: cssVar("--muted"),
+        "stroke-width": 1,
+        "stroke-dasharray": "4 4",
+        opacity: 0.7,
+      },
+      svg,
+    );
+    const label = el(
+      "text",
+      { x: dx + 6, y: m.top + 12, "text-anchor": "start", class: "chart-divider-label" },
+      svg,
+    );
+    label.textContent = divider.label;
+    // Not enough room on the right: put the label on the left of the line
+    if (dx + 6 + label.getComputedTextLength() > m.left + w) {
+      label.setAttribute("x", dx - 6);
+      label.setAttribute("text-anchor", "end");
+    }
+  }
+
+  // Milestone markers fade in once the lines have settled. They come most important first;
+  // one whose dot or label would overlap a marker already drawn is left out.
+  const markerDelay = !prev && !reduceMotion() ? REVEAL_MS : changed ? CHART_ANIM_MS : 0;
+  const taken = []; // label boxes drawn so far
+  markers.forEach((mk) => {
+    const g = el("g", { class: "chart-marker", style: `animation-delay: ${markerDelay}ms` }, svg);
+    const mx = x(mk.x);
+    const my = y(mk.value);
+    el("circle", { cx: mx, cy: my, r: 4, fill: cssVar("--surface"), stroke: cssVar("--text"), "stroke-width": 1.5 }, g);
+    const label = el("text", { x: mx, y: my - 10, "text-anchor": "middle", class: "chart-marker-label" }, g);
+    label.textContent = mk.label;
+    const ly = my - 10 < m.top + 10 ? my + 18 : my - 10; // too close to the top: label below
+    label.setAttribute("y", ly);
+
+    const len = label.getComputedTextLength();
+    let left = mx - len / 2;
+    if (mx + len / 2 > m.left + w) {
+      label.setAttribute("text-anchor", "end");
+      left = mx - len;
+    } else if (left < m.left) {
+      label.setAttribute("text-anchor", "start");
+      left = mx;
+    }
+    const box = { left: Math.min(left, mx - 5) - 4, right: Math.max(left + len, mx + 5) + 4, top: Math.min(ly - 11, my - 5), bottom: Math.max(ly + 2, my + 5) };
+    const overlaps = taken.some((t) => box.left < t.right && box.right > t.left && box.top < t.bottom && box.bottom > t.top);
+    if (overlaps) g.remove();
+    else taken.push(box);
+  });
+
+  // End labels: the two lines' final values, with a bracket and the gap between them
+  if (ends) {
+    const g = el("g", { class: "chart-marker", style: `animation-delay: ${markerDelay}ms` }, svg);
+    const [upper, lower] = [...ends.lines].sort((a, b) => b.value - a.value);
+    const bx = x(years) + 8; // bracket
+    const tx = bx + 9; // text
+    const yU = y(upper.value);
+    const yL = y(lower.value);
+    el(
+      "path",
+      {
+        d: `M${bx - 3} ${yU} h3 V${yL} h-3`,
+        fill: "none",
+        stroke: cssVar("--muted"),
+        "stroke-width": 1,
+        opacity: 0.6,
+      },
+      g,
+    );
+    // Keep the two labels apart when the lines end close together
+    const mid = (yU + yL) / 2;
+    const room = yL - yU;
+    const upY = room < 26 ? mid - 6 : yU + 4;
+    const lowY = room < 26 ? mid + 14 : yL + 4;
+    const label = (text, ty, cls) => {
+      const t = el("text", { x: tx, y: ty, class: cls }, g);
+      t.textContent = text;
+    };
+    label(upper.text, upY, upper.cls);
+    label(lower.text, lowY, lower.cls);
+    if (ends.gap && room >= 60) {
+      label(ends.gap[0], mid + 1, "chart-end-gap");
+      label(ends.gap[1], mid + 13, "chart-end-gap-note");
+    }
   }
 
   // Hover layer: crosshair + one dot per series + tooltip
@@ -673,9 +869,75 @@ function wireSliders(ids, onChange) {
 }
 
 /**
+ * Step-up can be a percentage or a fixed amount in rupees. A `.unit-toggle[data-unit-for="<id>"]`
+ * switches the box #<id> (and its slider) between the two, with these limits.
+ */
+const STEP_UP_UNITS = {
+  percent: { min: 0, max: 25, step: 1 },
+  amount: { min: 0, max: 50000, step: 500 },
+};
+
+function stepUpUnit(id) {
+  const toggle = document.querySelector(`.unit-toggle[data-unit-for="${id}"]`);
+  return toggle ? toggle.dataset.unit : "percent";
+}
+
+/**
+ * Switch #<id> to `unit`. With `base` (the monthly amount), the current value is converted
+ * so the step-up stays about the same, e.g. 10% of ₹10,000 becomes ₹1,000.
+ */
+function setStepUpUnit(id, unit, base) {
+  const toggle = document.querySelector(`.unit-toggle[data-unit-for="${id}"]`);
+  if (!toggle) return;
+  const from = toggle.dataset.unit;
+  toggle.dataset.unit = unit;
+  toggle.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.unit === unit));
+
+  const limits = STEP_UP_UNITS[unit];
+  const number = document.getElementById(id);
+  const range = document.getElementById(id + "-range");
+  [number, range].forEach((node) => {
+    if (!node) return;
+    node.min = limits.min;
+    node.max = limits.max;
+    node.step = limits.step;
+  });
+  number.setAttribute("aria-label", unit === "amount" ? "Step-up in rupees" : "Step-up in percent");
+
+  if (base !== undefined && from !== unit && number.value !== "") {
+    const v = parseFloat(number.value);
+    const converted = unit === "amount" ? (base * v) / 100 : base > 0 ? (v / base) * 100 : 0;
+    const snapped = Math.round(converted / limits.step) * limits.step;
+    number.value = Math.min(limits.max, Math.max(limits.min, snapped));
+  }
+  if (range) {
+    range.value = number.value;
+    updateFill(range);
+  }
+}
+
+/**
+ * Wire every unit toggle on the page. `baseOf(id)` gives the monthly amount used to convert values.
+ */
+function wireStepUpUnits(baseOf, onChange) {
+  document.querySelectorAll(".unit-toggle").forEach((toggle) => {
+    const id = toggle.dataset.unitFor;
+    toggle.querySelectorAll("button").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        if (btn.dataset.unit === toggle.dataset.unit) return;
+        setStepUpUnit(id, btn.dataset.unit, baseOf(id));
+        onChange();
+      }),
+    );
+  });
+}
+
+/**
  * Put every box and slider back to the value written in the HTML
  */
 function resetFields(ids) {
+  document.querySelectorAll(".unit-toggle").forEach((t) => setStepUpUnit(t.dataset.unitFor, "percent"));
+  document.querySelectorAll('input[type="checkbox"][data-url]').forEach((box) => (box.checked = box.defaultChecked));
   ids.forEach((id) => {
     const number = document.getElementById(id);
     number.value = number.defaultValue;
@@ -690,6 +952,13 @@ function resetFields(ids) {
 function saveToURL(ids) {
   const params = new URLSearchParams();
   ids.forEach((id) => params.set(id, document.getElementById(id).value));
+  document.querySelectorAll(".unit-toggle").forEach((t) => {
+    if (t.dataset.unit === "amount") params.set(t.dataset.unitFor + "-unit", "amount");
+  });
+  // Switches are only written when they differ from their default
+  document.querySelectorAll('input[type="checkbox"][data-url]').forEach((box) => {
+    if (box.checked !== box.defaultChecked) params.set(box.id, box.checked ? "1" : "0");
+  });
   try {
     history.replaceState(null, "", "?" + params.toString());
   } catch {
@@ -702,6 +971,14 @@ function saveToURL(ids) {
  */
 function loadFromURL(ids) {
   const params = new URLSearchParams(location.search);
+  // Units first, so values are checked against the right limits
+  document.querySelectorAll(".unit-toggle").forEach((t) => {
+    if (params.get(t.dataset.unitFor + "-unit") === "amount") setStepUpUnit(t.dataset.unitFor, "amount");
+  });
+  document.querySelectorAll('input[type="checkbox"][data-url]').forEach((box) => {
+    const value = params.get(box.id);
+    if (value === "1" || value === "0") box.checked = value === "1";
+  });
   ids.forEach((id) => {
     const value = params.get(id);
     if (value !== null && value !== "" && !isNaN(parseFloat(value))) {
@@ -740,45 +1017,4 @@ function wireCopyLink(btn, beforeCopy) {
     clearTimeout(btn._timer);
     btn._timer = setTimeout(() => (btn.textContent = original), 1600);
   });
-}
-
-/**
- * Called after every theme change, so the page can redraw its charts.
- * (The saved theme itself is applied by a tiny script in each page's <head>, before paint.)
- */
-let onThemeChange = () => {};
-
-function currentTheme() {
-  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
-}
-
-function setTheme(theme, remember = true) {
-  if (theme === "light") document.documentElement.dataset.theme = "light";
-  else delete document.documentElement.dataset.theme;
-
-  const btn = document.getElementById("theme-toggle");
-  const label =
-    theme === "light" ? "Switch to dark theme" : "Switch to light theme";
-  btn.setAttribute("aria-label", label);
-  btn.title = label;
-
-  if (remember) {
-    try {
-      localStorage.setItem("sip-theme", theme);
-    } catch {
-      // Storage blocked (private window etc.); the toggle still works for this visit
-    }
-  }
-  onThemeChange(); // charts read their colours from the theme, so redraw them
-}
-
-/**
- * Wire the toggle button and draw the page for the first time
- */
-function initTheme(redraw) {
-  onThemeChange = redraw;
-  document.getElementById("theme-toggle").addEventListener("click", () => {
-    setTheme(currentTheme() === "light" ? "dark" : "light");
-  });
-  setTheme(currentTheme(), false);
 }
