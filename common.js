@@ -35,7 +35,9 @@ function formatWords(value) {
  * Returns one point per year, starting at year 0.
  */
 function simulateSIP(P, lumpSum, i, stepUp, inflation, years) {
-  const points = [{ payment: 0, invested: lumpSum, value: lumpSum, real: lumpSum }];
+  const points = [
+    { payment: 0, invested: lumpSum, value: lumpSum, real: lumpSum },
+  ];
   let invested = lumpSum;
   let value = lumpSum;
   let payment = P;
@@ -45,7 +47,12 @@ function simulateSIP(P, lumpSum, i, stepUp, inflation, years) {
       invested += payment;
       value = (value + payment) * (1 + i);
     }
-    points.push({ payment, invested, value, real: value / Math.pow(1 + inflation, yr) });
+    points.push({
+      payment,
+      invested,
+      value,
+      real: value / Math.pow(1 + inflation, yr),
+    });
     payment *= 1 + stepUp;
   }
   return points;
@@ -59,7 +66,9 @@ function el(tag, attrs = {}, parent) {
 }
 
 function cssVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
 }
 
 /**
@@ -170,7 +179,11 @@ function resample(values, len) {
 function animateNumber(node, target, format) {
   cancelAnimationFrame(node._anim);
   const from = node._shown;
-  if (typeof from !== "number" || reduceMotion() || Math.abs(from - target) < 0.5) {
+  if (
+    typeof from !== "number" ||
+    reduceMotion() ||
+    Math.abs(from - target) < 0.5
+  ) {
     node._shown = target;
     node.textContent = format(target);
     return;
@@ -203,7 +216,10 @@ function setStaticText(node, text) {
  *   tooltip: (year) => HTML for the hover tooltip
  *   yMax:    optional top of the y axis, to give several charts the same scale
  */
-function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fixedMax }) {
+function drawLineChart(
+  container,
+  { years, series, tooltip, ariaLabel, yMax: fixedMax },
+) {
   container.innerHTML = "";
   if (!series) return;
 
@@ -213,19 +229,44 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
   const w = width - m.left - m.right;
   const h = height - m.top - m.bottom;
 
-  const yMax = fixedMax ?? niceMax(Math.max(...series.flatMap((s) => s.values)));
+  const yMax =
+    fixedMax ?? niceMax(Math.max(...series.flatMap((s) => s.values)));
   const x = (yr) => m.left + (yr / years) * w;
   const y = (v) => m.top + h - (v / yMax) * h;
 
   // viewBox lets the chart scale (e.g. when printing) without being redrawn
-  const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, width: "100%", role: "img", "aria-label": ariaLabel }, container);
+  const svg = el(
+    "svg",
+    {
+      viewBox: `0 0 ${width} ${height}`,
+      width: "100%",
+      role: "img",
+      "aria-label": ariaLabel,
+    },
+    container,
+  );
 
   // Gridlines + y labels
   const yTicks = 4;
   for (let t = 0; t <= yTicks; t++) {
     const v = (yMax / yTicks) * t;
-    el("line", { x1: m.left, x2: m.left + w, y1: y(v), y2: y(v), stroke: cssVar("--grid"), "stroke-width": 1 }, svg);
-    const label = el("text", { x: m.left - 8, y: y(v) + 4, "text-anchor": "end" }, svg);
+    el(
+      "line",
+      {
+        x1: m.left,
+        x2: m.left + w,
+        y1: y(v),
+        y2: y(v),
+        stroke: cssVar("--grid"),
+        "stroke-width": 1,
+      },
+      svg,
+    );
+    const label = el(
+      "text",
+      { x: m.left - 8, y: y(v) + 4, "text-anchor": "end" },
+      svg,
+    );
     label.textContent = formatCompact(v);
   }
 
@@ -233,13 +274,25 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
   const rawStep = Math.ceil(years / 8);
   const xStep = [1, 2, 5, 10].find((s) => s >= rawStep) || 10;
   for (let yr = 0; yr <= years; yr += xStep) {
-    const label = el("text", { x: x(yr), y: height - 6, "text-anchor": "middle" }, svg);
+    const label = el(
+      "text",
+      { x: x(yr), y: height - 6, "text-anchor": "middle" },
+      svg,
+    );
     label.textContent = yr === 0 ? "0" : yr + "y";
   }
 
   // Path through `values`, drawn against an axis whose top is `top` (changes during animation)
   const path = (values, top) =>
-    values.map((v, idx) => (idx ? "L" : "M") + x(idx).toFixed(1) + " " + (m.top + h - (v / top) * h).toFixed(1)).join(" ");
+    values
+      .map(
+        (v, idx) =>
+          (idx ? "L" : "M") +
+          x(idx).toFixed(1) +
+          " " +
+          (m.top + h - (v / top) * h).toFixed(1),
+      )
+      .join(" ");
 
   // Soft area under any series that asks for it
   const defs = el("defs", {}, svg);
@@ -247,27 +300,43 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
     if (!s.area) return null;
     const id = `${container.id}-area-${idx}`;
     const grad = el("linearGradient", { id, x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
-    el("stop", { offset: "0%", "stop-color": s.color, "stop-opacity": 0.16 }, grad);
-    el("stop", { offset: "100%", "stop-color": s.color, "stop-opacity": 0 }, grad);
+    el(
+      "stop",
+      { offset: "0%", "stop-color": s.color, "stop-opacity": 0.16 },
+      grad,
+    );
+    el(
+      "stop",
+      { offset: "100%", "stop-color": s.color, "stop-opacity": 0 },
+      grad,
+    );
     return el("path", { fill: `url(#${id})` }, svg);
   });
 
   const lines = series.map((s) =>
-    el("path", {
-      fill: "none",
-      stroke: s.color,
-      "stroke-width": 2,
-      "stroke-linejoin": "round",
-      "stroke-linecap": "round",
-      ...(s.dash ? { "stroke-dasharray": s.dash } : {}),
-    }, svg)
+    el(
+      "path",
+      {
+        fill: "none",
+        stroke: s.color,
+        "stroke-width": 2,
+        "stroke-linejoin": "round",
+        "stroke-linecap": "round",
+        ...(s.dash ? { "stroke-dasharray": s.dash } : {}),
+      },
+      svg,
+    ),
   );
 
   const render = (valueSets, top) => {
     valueSets.forEach((values, idx) => {
       const d = path(values, top);
       lines[idx].setAttribute("d", d);
-      if (areas[idx]) areas[idx].setAttribute("d", d + ` L${x(years)} ${y(0)} L${x(0)} ${y(0)} Z`);
+      if (areas[idx])
+        areas[idx].setAttribute(
+          "d",
+          d + ` L${x(years)} ${y(0)} L${x(0)} ${y(0)} Z`,
+        );
     });
   };
 
@@ -277,10 +346,17 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
   container._prev = { values: target, yMax };
   cancelAnimationFrame(container._anim);
 
-  const canAnimate = prev && prev.values.length === target.length && !reduceMotion();
-  const from = canAnimate ? prev.values.map((v) => resample(v, years + 1)) : null;
+  const canAnimate =
+    prev && prev.values.length === target.length && !reduceMotion();
+  const from = canAnimate
+    ? prev.values.map((v) => resample(v, years + 1))
+    : null;
   const changed =
-    from && (prev.yMax !== yMax || from.some((vals, i) => vals.some((v, j) => Math.abs(v - target[i][j]) > 0.5)));
+    from &&
+    (prev.yMax !== yMax ||
+      from.some((vals, i) =>
+        vals.some((v, j) => Math.abs(v - target[i][j]) > 0.5),
+      ));
 
   if (!changed) {
     render(target, yMax);
@@ -289,8 +365,14 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
     if (!prev && !container._revealed && !reduceMotion()) {
       container._revealed = true;
       const clipId = `${container.id}-reveal`;
-      const clip = el("rect", { x: 0, y: 0, width: 0, height }, el("clipPath", { id: clipId }, defs));
-      [...lines, ...areas.filter(Boolean)].forEach((p) => p.setAttribute("clip-path", `url(#${clipId})`));
+      const clip = el(
+        "rect",
+        { x: 0, y: 0, width: 0, height },
+        el("clipPath", { id: clipId }, defs),
+      );
+      [...lines, ...areas.filter(Boolean)].forEach((p) =>
+        p.setAttribute("clip-path", `url(#${clipId})`),
+      );
       let start = null;
       const step = (now) => {
         if (start === null) start = now;
@@ -306,8 +388,10 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
       if (start === null) start = now;
       const t = easeOutCubic(Math.min(1, (now - start) / CHART_ANIM_MS));
       render(
-        target.map((vals, i) => vals.map((v, j) => from[i][j] + (v - from[i][j]) * t)),
-        prev.yMax + (yMax - prev.yMax) * t
+        target.map((vals, i) =>
+          vals.map((v, j) => from[i][j] + (v - from[i][j]) * t),
+        ),
+        prev.yMax + (yMax - prev.yMax) * t,
       );
       if (t < 1) container._anim = requestAnimationFrame(step);
     };
@@ -317,14 +401,46 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
 
   // Hover layer: crosshair + one dot per series + tooltip
   const hover = el("g", { visibility: "hidden" }, svg);
-  const cross = el("line", { y1: m.top, y2: m.top + h, stroke: cssVar("--muted"), "stroke-width": 1, "stroke-dasharray": "3 3" }, hover);
+  const cross = el(
+    "line",
+    {
+      y1: m.top,
+      y2: m.top + h,
+      stroke: cssVar("--muted"),
+      "stroke-width": 1,
+      "stroke-dasharray": "3 3",
+    },
+    hover,
+  );
   const dots = series.map((s) =>
     s.dash
-      ? el("circle", { r: 4, fill: cssVar("--surface"), stroke: s.color, "stroke-width": 2 }, hover)
-      : el("circle", { r: 4.5, fill: s.color, stroke: cssVar("--surface"), "stroke-width": 2 }, hover)
+      ? el(
+          "circle",
+          {
+            r: 4,
+            fill: cssVar("--surface"),
+            stroke: s.color,
+            "stroke-width": 2,
+          },
+          hover,
+        )
+      : el(
+          "circle",
+          {
+            r: 4.5,
+            fill: s.color,
+            stroke: cssVar("--surface"),
+            "stroke-width": 2,
+          },
+          hover,
+        ),
   );
 
-  const overlay = el("rect", { x: m.left, y: m.top, width: w, height: h, fill: "transparent" }, svg);
+  const overlay = el(
+    "rect",
+    { x: m.left, y: m.top, width: w, height: h, fill: "transparent" },
+    svg,
+  );
 
   // The crosshair and dots glide towards the hovered year instead of snapping
   let shown = null; // position on screen: { x, ys: [one y per series] }
@@ -344,7 +460,9 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
     const k = 0.3; // fraction of the remaining distance covered each frame
     shown.x += (goal.x - shown.x) * k;
     shown.ys = shown.ys.map((v, idx) => v + (goal.ys[idx] - v) * k);
-    const arrived = Math.abs(goal.x - shown.x) < 0.3 && shown.ys.every((v, idx) => Math.abs(goal.ys[idx] - v) < 0.3);
+    const arrived =
+      Math.abs(goal.x - shown.x) < 0.3 &&
+      shown.ys.every((v, idx) => Math.abs(goal.ys[idx] - v) < 0.3);
     if (arrived) shown = { x: goal.x, ys: [...goal.ys] };
     place(shown);
     glideFrame = arrived ? null : requestAnimationFrame(glide);
@@ -353,7 +471,10 @@ function drawLineChart(container, { years, series, tooltip, ariaLabel, yMax: fix
   overlay.addEventListener("pointermove", (e) => {
     const box = svg.getBoundingClientRect();
     const px = (e.clientX - box.left) * (width / box.width);
-    const yr = Math.max(0, Math.min(years, Math.round(((px - m.left) / w) * years)));
+    const yr = Math.max(
+      0,
+      Math.min(years, Math.round(((px - m.left) / w) * years)),
+    );
 
     goal = { x: x(yr), ys: series.map((s) => y(s.values[yr])) };
     hover.setAttribute("visibility", "visible");
@@ -403,15 +524,21 @@ function animateDetails(details) {
       details.open = true;
       const h = body.scrollHeight;
       details._anim = body.animate(
-        [{ height: "0px", opacity: 0 }, { height: h + "px", opacity: 1 }],
-        { duration: PANEL_MS, easing }
+        [
+          { height: "0px", opacity: 0 },
+          { height: h + "px", opacity: 1 },
+        ],
+        { duration: PANEL_MS, easing },
       );
       details._anim.onfinish = () => (details._anim = null);
     } else {
       const h = body.offsetHeight;
       details._anim = body.animate(
-        [{ height: h + "px", opacity: 1 }, { height: "0px", opacity: 0 }],
-        { duration: PANEL_MS * 0.85, easing: "ease-in" }
+        [
+          { height: h + "px", opacity: 1 },
+          { height: "0px", opacity: 0 },
+        ],
+        { duration: PANEL_MS * 0.85, easing: "ease-in" },
       );
       details._anim.onfinish = () => {
         details.open = false;
@@ -543,7 +670,8 @@ function setTheme(theme, remember = true) {
   else delete document.documentElement.dataset.theme;
 
   const btn = document.getElementById("theme-toggle");
-  const label = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
+  const label =
+    theme === "light" ? "Switch to dark theme" : "Switch to light theme";
   btn.setAttribute("aria-label", label);
   btn.title = label;
 
