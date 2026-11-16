@@ -140,11 +140,6 @@ button {
   --plan-b: var(--series-invested);
 }
 
-.layout.single {
-  grid-template-columns: 1fr;
-  max-width: 1280px;
-}
-
 .back-link {
   display: inline-block;
   margin-bottom: 6px;
@@ -167,54 +162,108 @@ h3 {
   font-weight: 600;
 }
 
-/* Wide screens: Plan A | Plan B | Both plans, side by side */
+/* Compare page: a wider inputs column, so Plan A and Plan B fit side by side */
+.layout.compare {
+  grid-template-columns: 560px minmax(0, 1fr);
+}
+
 .plans {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px 40px;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
   margin-top: 20px;
 }
 
-.shared {
-  padding-left: 40px;
-  border-left: 1px solid var(--border);
+.plan h3 + div > .field:first-child {
+  margin-top: 12px;
+}
+
+/* The shared settings sit under both plans */
+.plan.shared {
+  grid-column: 1 / -1;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
 }
 
 .shared-fields {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0 32px;
 }
 
-/* Medium screens: the two plans side by side, shared settings below */
+/* Not enough room beside the inputs: everything stacks */
 @media (max-width: 1100px) {
-  .plans {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .shared {
-    grid-column: 1 / -1;
-    margin-top: 8px;
-    padding: 20px 0 0;
-    border-left: none;
-    border-top: 1px solid var(--border);
-  }
-
-  .shared-fields {
-    grid-template-columns: 1fr 1fr;
+  .layout.compare {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 760px;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 560px) {
   .plans,
   .shared-fields {
     grid-template-columns: 1fr;
   }
+
+  .plan + .plan {
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
 }
 
-.plan,
-.shared {
+.plan {
   min-width: 0;
+}
+
+/* Compare page: the summary and chart cards under the tabs */
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.side > .view-bar {
+  margin-bottom: 0;
+}
+
+/* Year-by-year comparison: two header rows (plan, then column), kept together while scrolling */
+.grouped thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.grouped thead th {
+  position: static;
+}
+
+.grouped .group-row th[scope="colgroup"] {
+  text-align: center;
+  color: var(--text);
+  font-weight: 600;
+  border-left: 1px solid var(--border);
+}
+
+.grouped .group-row th[scope="colgroup"] .swatch {
+  margin-right: 6px;
+}
+
+.grouped tr:not(.group-row) th:nth-child(1),
+.grouped tr:not(.group-row) th:nth-child(5),
+.grouped tbody td:nth-child(2),
+.grouped tbody td:nth-child(6),
+.grouped tbody td:nth-child(10) {
+  border-left: 1px solid var(--border);
+}
+
+.grouped .group-row th[rowspan] {
+  vertical-align: bottom;
+}
+
+.grouped .group-row th:last-child {
+  border-left: 1px solid var(--border);
 }
 
 .swatch.plan-a {
@@ -300,6 +349,34 @@ body {
   grid-template-columns: 380px 1fr;
   gap: 20px;
   align-items: start;
+}
+
+/* On wide screens the inputs card and the column beside it end at the same height:
+   whichever is shorter stretches, with its last card (or the inputs card's buttons) taking up the slack.
+   Narrower, the charts stack and the right column gets much taller, so each side keeps its own height. */
+@media (min-width: 1180px) {
+  .layout {
+    align-items: stretch;
+  }
+
+  .layout > .card:first-child {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .layout > .card:first-child > .card-actions {
+    margin-top: auto;
+  }
+
+  .layout > .card:first-child > :nth-last-child(2) {
+    margin-bottom: 20px;
+  }
+
+  .side > .card:last-child,
+  .side > .side-panel,
+  .side-panel > .card:last-child {
+    flex: 1;
+  }
 }
 
 @media (min-width: 900px) {
@@ -405,8 +482,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 18px;
   border-radius: 50%;
   background: var(--accent);
-  border: 3px solid var(--surface);
-  box-shadow: 0 0 0 1px var(--accent);
+  border: none;
   transition: transform 0.1s;
 }
 
@@ -415,8 +491,7 @@ input[type="range"]::-moz-range-thumb {
   height: 18px;
   border-radius: 50%;
   background: var(--accent);
-  border: 3px solid var(--surface);
-  box-shadow: 0 0 0 1px var(--accent);
+  border: none;
 }
 
 input[type="range"]:active::-webkit-slider-thumb {
@@ -431,10 +506,17 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   box-shadow: 0 0 0 4px var(--accent-glow);
 }
 
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  container-type: inline-size;
+}
+
 .result {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr;
 }
 
 /* Headline: total value at the end */
@@ -501,6 +583,38 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   color: var(--text);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+/* With room to spare, the three groups sit side by side under the headline */
+@container (min-width: 600px) {
+  .result {
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 24px;
+  }
+
+  .result-hero {
+    grid-column: 1 / -1;
+  }
+
+  .result-group + .result-group {
+    padding-top: 0;
+    padding-left: 24px;
+    border-top: none;
+    border-left: 1px dashed var(--border);
+  }
+
+  .result-group p {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    margin: 12px 0 0;
+    font-size: 13px;
+  }
+
+  .result-group p span[id] {
+    font-size: 17px;
+    font-weight: 600;
+  }
 }
 
 .label-wrap {
@@ -589,31 +703,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   gap: 6px;
 }
 
-.legend.vertical {
-  flex-direction: column;
-  gap: 12px;
-  font-size: 13px;
-}
-
-.legend.vertical .row {
-  display: grid;
-  grid-template-columns: 10px 1fr auto;
-  align-items: center;
-  gap: 8px 10px;
-}
-
-.legend.vertical .val {
-  color: var(--text);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.legend.vertical .pct {
-  grid-column: 2 / 4;
-  margin-top: -6px;
-  font-size: 12px;
-}
-
 .swatch {
   display: inline-block;
   width: 10px;
@@ -636,17 +725,8 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 
 .pie-wrap {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 24px;
-  align-items: center;
-}
-
-@media (max-width: 420px) {
-  .pie-wrap {
-    grid-template-columns: 1fr;
-    justify-items: center;
-  }
+  display: flex;
+  justify-content: center;
 }
 
 #pie-chart {
@@ -663,9 +743,8 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   fill: var(--text) !important;
 }
 
-.table-block {
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
+.table-card {
+  grid-column: 1 / -1;
 }
 
 .table-block summary {
@@ -814,72 +893,6 @@ tbody th {
   font-variant-numeric: tabular-nums;
 }
 
-/* The page switches to the light theme just before printing (see script.js) */
-
-@media print {
-  @page {
-    margin: 12mm;
-  }
-
-  * {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body {
-    display: block;
-    min-height: 0;
-    padding: 0;
-    background: #fff;
-  }
-
-  .layout {
-    grid-template-columns: 1fr;
-    max-width: none;
-    gap: 12px;
-  }
-
-  .card {
-    padding: 16px 20px;
-  }
-
-  .chart-block,
-  .result,
-  tr {
-    break-inside: avoid;
-  }
-
-  /* Hide everything you can only click or drag */
-  .head-actions,
-  .card-actions,
-  .table-actions,
-  .info,
-  .tooltip,
-  input[type="range"],
-  .table-block summary::before {
-    display: none !important;
-  }
-
-  .field {
-    margin-top: 10px;
-  }
-
-  input[type="number"] {
-    border: none;
-    background: transparent;
-    padding: 0;
-  }
-
-  .table-wrap {
-    max-height: none;
-    overflow: visible;
-  }
-
-  thead th {
-    position: static;
-  }
-}
-
 /* Cards fade and rise in when the page opens, one after another */
 @keyframes card-in {
   from {
@@ -896,8 +909,19 @@ tbody th {
   animation: card-in 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
-.layout > .card:nth-child(2) {
+.layout > .card:nth-child(2),
+.side > .card:nth-child(1),
+.side-panel > .card:nth-child(1) {
   animation-delay: 0.09s;
+}
+
+.side > .card:nth-child(2),
+.side-panel > .card:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.layout > .table-card {
+  animation-delay: 0.27s;
 }
 
 /* The year-by-year table's sliding panel (see animateDetails in common.js) */
@@ -905,14 +929,8 @@ tbody th {
   overflow: hidden;
 }
 
-/* Respect "reduce motion" system settings, and never animate in print */
+/* Respect "reduce motion" system settings */
 @media (prefers-reduced-motion: reduce) {
-  .card {
-    animation: none;
-  }
-}
-
-@media print {
   .card {
     animation: none;
   }
@@ -979,8 +997,13 @@ tbody th {
   gap: 28px;
 }
 
-@media print {
-  .tabs {
-    display: none;
+/* With room to spare, the pie sits beside the line chart */
+@container (min-width: 700px) {
+  .charts-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 32px;
+    align-items: start;
   }
 }
+

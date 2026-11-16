@@ -263,7 +263,7 @@ function drawLineChart(
   const x = (yr) => m.left + (yr / years) * w;
   const y = (v) => m.top + h - (v / yMax) * h;
 
-  // viewBox lets the chart scale (e.g. when printing) without being redrawn
+  // viewBox lets the chart scale without being redrawn
   const svg = el(
     "svg",
     {

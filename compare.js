@@ -1,8 +1,8 @@
 const planFields = [
-  { key: "amount", label: "Monthly Investment (₹)", min: 1000, max: 500000, step: 1000 },
+  { key: "amount", label: "Monthly SIP (₹)", min: 1000, max: 500000, step: 1000 },
   { key: "lumpsum", label: "Lump Sum (₹)", min: 0, max: 10000000, step: 10000 },
-  { key: "stepup", label: "Annual Step-up (%)", min: 0, max: 25, step: 1 },
-  { key: "rate", label: "Expected Return (%)", min: 0, max: 25, step: 0.5 },
+  { key: "stepup", label: "Step-up (%)", min: 0, max: 25, step: 1 },
+  { key: "rate", label: "Return (%)", min: 0, max: 25, step: 0.5 },
 ];
 
 /**
@@ -37,7 +37,7 @@ const chartEl = document.getElementById("compare-chart");
 let last = null; // { a, b, years } from the latest calculation
 
 /**
- * The two views, chosen with the tabs at the top of the results.
+ * The two views, chosen with the tabs above the summary and the chart.
  * In today's money, every payment is counted at its value in today's money when it was made,
  * so the invested amount and the value can be compared directly.
  */
@@ -92,12 +92,14 @@ function update() {
     last = null;
     chartEl.innerHTML = "";
     document.getElementById("compare-body").innerHTML = "";
+    document.getElementById("year-table").innerHTML = "";
     return;
   }
 
   last = { a, b, years };
   drawCharts();
   drawTable();
+  drawYearTable();
   saveToURL(ids);
 }
 
@@ -114,7 +116,7 @@ function drawCharts() {
 
   drawLineChart(chartEl, {
     years,
-    height: 300,
+    height: 260,
     ariaLabel: `Line chart of ${mode.valueLabel.toLowerCase()} and amount invested for Plan A and Plan B by year`,
     series: [
       { values: values(b, mode.investedKey), color: colorB, dash: "2 4" },
@@ -194,6 +196,49 @@ function drawTable() {
   });
 }
 
+/**
+ * Year-by-year rows for both plans, in whole rupees:
+ * year, then monthly SIP, invested so far, value and today's money for A, the same for B, then the value gap.
+ */
+function yearRows() {
+  const R = Math.round;
+  const plan = (d) => [R(d.payment), R(d.invested), R(d.value), R(d.real)];
+  return last.a.data.slice(1).map((da, idx) => {
+    const db = last.b.data[idx + 1];
+    return [idx + 1, ...plan(da), ...plan(db), R(db.value) - R(da.value)];
+  });
+}
+
+function drawYearTable() {
+  const body = document.getElementById("year-table");
+  body.innerHTML = "";
+  yearRows().forEach((row) => {
+    const tr = document.createElement("tr");
+    row.forEach((v, i) => {
+      const cell = document.createElement(i === 0 ? "th" : "td");
+      if (i === 0) cell.scope = "row";
+      cell.textContent = i === 0 ? String(v) : i === row.length - 1 ? formatSigned(v) : formatINR(v);
+      tr.appendChild(cell);
+    });
+    body.appendChild(tr);
+  });
+}
+
+function downloadCSV() {
+  if (!last) return;
+  const cols = ["Monthly SIP", "Invested so far", "Value", "In today's money"];
+  const rows = [["Year", ...cols.map((c) => "Plan A " + c), ...cols.map((c) => "Plan B " + c), "Value difference (B - A)"], ...yearRows()];
+  const csv = rows.map((r) => r.map((cell) => `"${cell}"`).join(",")).join("\r\n");
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  link.download = "sip-comparison-year-by-year.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+}
+
 loadFromURL(ids);
 wireSliders(ids, update);
 wireInfoIcons();
@@ -203,11 +248,13 @@ document.getElementById("reset").addEventListener("click", () => {
   resetFields(ids);
   update();
 });
+document.getElementById("download-csv").addEventListener("click", downloadCSV);
+animateDetails(document.querySelector(".table-block"));
 
 // Redraw the charts when their width changes
 onWidthChange(chartEl, drawCharts);
 
-// Tabs at the top switch the chart and the table between total value and today's money
+// The tabs switch the summary and the chart between total value and today's money
 wireViewTabs((mode) => {
   viewMode = mode;
   document.getElementById("legend-value").textContent = VIEW_MODES[mode].valueLabel;

@@ -182,7 +182,14 @@
           />
         </div>
 
-        <div class="result">
+        <div class="card-actions">
+          <button type="button" class="ghost-btn" id="copy-link">Copy link</button>
+          <a class="ghost-btn wide-link" id="compare-link" href="compare.html">Compare with another plan →</a>
+        </div>
+      </section>
+
+      <div class="side">
+        <section class="card result" aria-label="Results">
           <!-- Headline: what the investment is worth at the end -->
           <div class="result-hero">
             <span class="label-wrap">Total Value
@@ -239,50 +246,45 @@
               <span id="real-gain">-</span>
             </p>
           </section>
-        </div>
+        </section>
 
-        <div class="card-actions">
-          <button type="button" class="ghost-btn" id="copy-link">Copy link</button>
-          <button type="button" class="ghost-btn" id="print">Print / Save PDF</button>
-          <a class="ghost-btn wide-link" id="compare-link" href="compare.html">Compare with another plan →</a>
-        </div>
-      </section>
-
-      <section class="card charts">
-        <!-- Switches both charts between total value and today's money -->
-        <div class="view-bar">
-          <div class="tabs" role="tablist" aria-label="Show values as">
-            <button type="button" class="tab" role="tab" id="view-tab-total" aria-selected="true" aria-controls="charts-panel" data-mode="total">Total value</button>
-            <button type="button" class="tab" role="tab" id="view-tab-real" aria-selected="false" aria-controls="charts-panel" data-mode="real" tabindex="-1">In today's money</button>
+        <section class="card charts">
+          <!-- Switches both charts between total value and today's money -->
+          <div class="view-bar">
+            <div class="tabs" role="tablist" aria-label="Show values as">
+              <button type="button" class="tab" role="tab" id="view-tab-total" aria-selected="true" aria-controls="charts-panel" data-mode="total">Total value</button>
+              <button type="button" class="tab" role="tab" id="view-tab-real" aria-selected="false" aria-controls="charts-panel" data-mode="real" tabindex="-1">In today's money</button>
+            </div>
+            <p class="view-note" id="view-note" hidden>
+              Adjusted for inflation. Each payment is counted at its value in today's money when it was made.
+            </p>
           </div>
-          <p class="view-note" id="view-note" hidden>
-            Adjusted for inflation. Each payment is counted at its value in today's money when it was made.
-          </p>
-        </div>
 
-        <div class="charts-panel" id="charts-panel" role="tabpanel" aria-labelledby="view-tab-total">
-          <div class="chart-block">
-            <div class="chart-head">
-              <h2>Growth over time</h2>
-              <div class="legend">
-                <span><i class="swatch line invested"></i><span id="legend-invested">Invested</span></span>
-                <span><i class="swatch line value"></i><span id="legend-value">Total value</span></span>
+          <div class="charts-panel" id="charts-panel" role="tabpanel" aria-labelledby="view-tab-total">
+            <div class="chart-block">
+              <div class="chart-head">
+                <h2>Growth over time</h2>
+                <div class="legend">
+                  <span><i class="swatch line invested"></i><span id="legend-invested">Invested</span></span>
+                  <span><i class="swatch line value"></i><span id="legend-value">Total value</span></span>
+                </div>
+              </div>
+              <div class="chart" id="line-chart"></div>
+            </div>
+
+            <div class="chart-block">
+              <div class="chart-head">
+                <h2>Breakdown</h2>
+              </div>
+              <div class="pie-wrap">
+                <div class="chart" id="pie-chart"></div>
               </div>
             </div>
-            <div class="chart" id="line-chart"></div>
           </div>
+        </section>
+      </div>
 
-          <div class="chart-block">
-            <div class="chart-head">
-              <h2>Breakdown</h2>
-            </div>
-            <div class="pie-wrap">
-              <div class="chart" id="pie-chart"></div>
-              <div class="legend vertical" id="pie-legend"></div>
-            </div>
-          </div>
-        </div>
-
+      <section class="card table-card">
         <details class="table-block">
           <summary>Year-by-year breakdown</summary>
           <div class="details-body">
@@ -296,9 +298,14 @@
                 <tr>
                   <th scope="col">Year</th>
                   <th scope="col">Monthly SIP</th>
+                  <th scope="col">Invested this year</th>
                   <th scope="col">Invested so far</th>
+                  <th scope="col">Returns this year</th>
+                  <th scope="col">Returns so far</th>
                   <th scope="col">Value</th>
+                  <th scope="col">Gain</th>
                   <th scope="col">In today's money</th>
+                  <th scope="col">Real gain</th>
                 </tr>
               </thead>
               <tbody id="year-table"></tbody>

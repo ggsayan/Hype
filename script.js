@@ -2,7 +2,6 @@ const fields = ["amount", "lumpsum", "stepup", "rate", "inflation", "years"];
 
 const lineEl = document.getElementById("line-chart");
 const pieEl = document.getElementById("pie-chart");
-const pieLegendEl = document.getElementById("pie-legend");
 
 let lastData = null; // most recent yearly series, reused when the window resizes or the view changes
 
@@ -37,6 +36,7 @@ function drawGrowthChart(data) {
   drawLineChart(lineEl, {
     years: data.length - 1,
     ariaLabel: `Line chart of amount invested and ${mode.valueLabel.toLowerCase()} by year`,
+    height: 200,
     series: [
       { values: data.map((d) => d[mode.investedKey]), color: cssVar("--series-invested") },
       { values: data.map((d) => d[mode.valueKey]), color: cssVar("--series-value"), area: true },
@@ -65,7 +65,6 @@ let pieEnd = null; // final year of the latest calculation, reused when switchin
 
 function buildPie() {
   pieEl.innerHTML = "";
-  pieLegendEl.innerHTML = "";
   const mid = PIE_SIZE / 2;
 
   const svg = el("svg", { width: PIE_SIZE, height: PIE_SIZE, viewBox: `0 0 ${PIE_SIZE} ${PIE_SIZE}`, role: "img", "aria-label": "Donut chart of invested amount versus returns" }, pieEl);
@@ -99,13 +98,7 @@ function buildPie() {
       hideTooltip();
     });
 
-    // Legend row with value and share
-    const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = `<i class="swatch ${key}"></i><span class="name"></span><span class="val"></span><span class="pct"></span>`;
-    pieLegendEl.appendChild(row);
-
-    return { key, arc, name: row.querySelector(".name"), val: row.querySelector(".val"), pct: row.querySelector(".pct") };
+    return { key, arc };
   });
 
   const centerLabel = el("text", { x: mid, y: mid - 6, "text-anchor": "middle", class: "pie-center-label" }, svg);
@@ -137,7 +130,6 @@ function drawPieChart(end) {
   pieEnd = end;
   if (!end) {
     pieEl.innerHTML = "";
-    pieLegendEl.innerHTML = "";
     pieEl._parts = null;
     pieEl._shareShown = null;
     return;
@@ -154,8 +146,6 @@ function drawPieChart(end) {
 
   // Labels depend on the view; colours come from the theme, so set them on every draw
   centerLabel.textContent = mode.valueLabel;
-  segs[0].name.textContent = "Invested";
-  segs[1].name.textContent = mode.returnsLabel;
   segs[0].arc.setAttribute("stroke", cssVar("--series-invested"));
   segs[1].arc.setAttribute("stroke", cssVar("--series-value"));
 
@@ -179,16 +169,6 @@ function drawPieChart(end) {
   }
 
   animateNumber(center, total, formatCompact);
-  segs.forEach((s) => animateNumber(s.val, pieEl._state[s.key], formatINRSigned));
-
-  if (returns < 0) {
-    setStaticText(segs[0].pct, "");
-    setStaticText(segs[1].pct, "Didn't beat inflation");
-  } else {
-    segs.forEach((s) =>
-      animateNumber(s.pct, total > 0 ? (pieEl._state[s.key] / total) * 100 : 0, (p) => p.toFixed(1) + "% of total")
-    );
-  }
 }
 
 /**
@@ -217,17 +197,57 @@ function showResults(values) {
   }
 }
 
+/**
+ * Columns of the year-by-year table and its CSV, in order.
+ * Amounts are whole rupees, so each row adds up exactly as shown.
+ */
+const TABLE_COLUMNS = [
+  { label: "Year", get: (r) => r.year, show: String },
+  { label: "Monthly SIP", get: (r) => r.payment, show: formatINR },
+  { label: "Invested this year", get: (r) => r.investedThisYear, show: formatINR },
+  { label: "Invested so far", get: (r) => r.invested, show: formatINR },
+  { label: "Returns this year", get: (r) => r.returnsThisYear, show: formatINRSigned },
+  { label: "Returns so far", get: (r) => r.returns, show: formatINRSigned },
+  { label: "Value", get: (r) => r.value, show: formatINR },
+  { label: "Gain", get: (r) => r.gain, show: formatPercent, csv: (v) => v.toFixed(1) + "%" },
+  { label: "In today's money", get: (r) => r.real, show: formatINR },
+  { label: "Real gain", get: (r) => r.realGain, show: formatPercent, csv: (v) => v.toFixed(1) + "%" },
+];
+
+/**
+ * One row per year. Year 1 counts the lump sum as invested that year.
+ */
+function tableRows(data) {
+  const R = Math.round;
+  return data.slice(1).map((d, idx) => {
+    const prev = idx === 0 ? { invested: 0, value: 0 } : data[idx];
+    const investedThisYear = R(d.invested) - R(prev.invested);
+    return {
+      year: idx + 1,
+      payment: R(d.payment),
+      investedThisYear,
+      invested: R(d.invested),
+      returnsThisYear: R(d.value) - R(prev.value) - investedThisYear,
+      returns: R(d.value) - R(d.invested),
+      value: R(d.value),
+      gain: gainPercent(d.value, d.invested),
+      real: R(d.real),
+      realGain: gainPercent(d.real, d.realInvested),
+    };
+  });
+}
+
 function drawTable(data) {
   const body = document.getElementById("year-table");
   body.innerHTML = "";
   if (!data) return;
 
-  data.slice(1).forEach((d, idx) => {
+  tableRows(data).forEach((row) => {
     const tr = document.createElement("tr");
-    [String(idx + 1), formatINR(d.payment), formatINR(d.invested), formatINR(d.value), formatINR(d.real)].forEach((text, col) => {
-      const cell = document.createElement(col === 0 ? "th" : "td");
-      if (col === 0) cell.scope = "row";
-      cell.textContent = text;
+    TABLE_COLUMNS.forEach((col, i) => {
+      const cell = document.createElement(i === 0 ? "th" : "td");
+      if (i === 0) cell.scope = "row";
+      cell.textContent = col.show(col.get(row));
       tr.appendChild(cell);
     });
     body.appendChild(tr);
@@ -276,9 +296,9 @@ function calculateSIP() {
 
 function downloadCSV() {
   if (!lastData) return;
-  const rows = [["Year", "Monthly SIP", "Invested so far", "Value", "In today's money"]];
-  lastData.slice(1).forEach((d, idx) => {
-    rows.push([idx + 1, d.payment, d.invested, d.value, d.real].map((v, col) => (col === 0 ? v : Math.round(v))));
+  const rows = [TABLE_COLUMNS.map((col) => col.label)];
+  tableRows(lastData).forEach((row) => {
+    rows.push(TABLE_COLUMNS.map((col) => (col.csv ? col.csv(col.get(row)) : col.get(row))));
   });
   const csv = rows.map((r) => r.map((cell) => `"${cell}"`).join(",")).join("\r\n");
 
@@ -291,25 +311,6 @@ function downloadCSV() {
   URL.revokeObjectURL(link.href);
 }
 
-/**
- * Print in the light theme with the table open, then put everything back
- */
-let beforePrint = null;
-
-window.addEventListener("beforeprint", () => {
-  const details = document.querySelector(".table-block");
-  beforePrint = { theme: currentTheme(), tableOpen: details.open };
-  details.open = true;
-  if (beforePrint.theme !== "light") setTheme("light", false);
-});
-
-window.addEventListener("afterprint", () => {
-  if (!beforePrint) return;
-  document.querySelector(".table-block").open = beforePrint.tableOpen;
-  if (beforePrint.theme !== "light") setTheme(beforePrint.theme, false);
-  beforePrint = null;
-});
-
 loadFromURL(fields);
 wireSliders(fields, calculateSIP);
 wireInfoIcons();
@@ -320,7 +321,6 @@ document.getElementById("reset").addEventListener("click", () => {
   calculateSIP();
 });
 document.getElementById("download-csv").addEventListener("click", downloadCSV);
-document.getElementById("print").addEventListener("click", () => window.print());
 
 // "Compare plans" opens the comparison with this plan already filled in as Plan A
 document.getElementById("compare-link").addEventListener("click", (e) => {
