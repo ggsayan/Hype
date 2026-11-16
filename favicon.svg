@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Dark tile -->
+  <rect width="64" height="64" rx="14" fill="#141416" />
+  <!-- Rising monthly contributions -->
+  <rect x="12" y="40" width="9" height="12" rx="2" fill="#3b3b44" />
+  <rect x="27.5" y="32" width="9" height="20" rx="2" fill="#3b3b44" />
+  <rect x="43" y="24" width="9" height="28" rx="2" fill="#3b3b44" />
+  <!-- Growth curve in the accent green -->
+  <path d="M11 45 C 25 43, 37 33, 49 15" fill="none" stroke="#34d399" stroke-width="5" stroke-linecap="round" />
+  <circle cx="49" cy="15" r="5.5" fill="#34d399" />
+</svg>

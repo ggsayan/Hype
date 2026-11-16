@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIP Calculator</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Apply the saved theme before the page paints, so there's no flash
+      try {
+        const saved = localStorage.getItem("sip-theme");
+        if (saved === "light" || saved === "dark") document.documentElement.dataset.theme = saved;
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <main class="layout">
+      <section class="card calculator">
+        <div class="calc-head">
+          <h1>SIP Calculator</h1>
+          <div class="head-actions">
+            <button type="button" class="ghost-btn icon-btn" id="theme-toggle" aria-label="Switch theme">
+              <!-- Sun: shown in dark mode (switch to light) -->
+              <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+              <!-- Moon: shown in light mode (switch to dark) -->
+              <svg class="icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </button>
+            <button type="button" class="ghost-btn" id="reset">Reset</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <div class="label-wrap">
+              <label for="amount">Monthly Investment (₹)</label>
+              <button type="button" class="info" aria-label="About Monthly Investment" data-info="The amount you invest every month. With a step-up, this is what you invest in year 1.">i</button>
+            </div>
+            <input
+              type="number"
+              id="amount"
+              value="10000"
+              min="1000"
+              max="250000"
+              step="1000"
+            />
+          </div>
+          <input
+            type="range"
+            id="amount-range"
+            min="1000"
+            max="250000"
+            step="1000"
+            value="10000"
+            aria-label="Monthly Investment"
+          />
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <div class="label-wrap">
+              <label for="lumpsum">Lump Sum (₹)</label>
+              <button type="button" class="info" aria-label="About Lump Sum" data-info="A one-time amount you invest at the very start, such as a bonus or existing savings. It grows alongside your monthly SIP. Set 0 if you don't have one.">i</button>
+            </div>
+            <input
+              type="number"
+              id="lumpsum"
+              value="0"
+              min="0"
+              step="10000"
+            />
+          </div>
+          <input
+            type="range"
+            id="lumpsum-range"
+            min="0"
+            max="2500000"
+            step="10000"
+            value="0"
+            aria-label="Lump Sum"
+          />
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <div class="label-wrap">
+              <label for="stepup">Annual Step-up (%)</label>
+              <button type="button" class="info" aria-label="About Annual Step-up" data-info="How much you raise your monthly investment each year. At 10%, ₹10,000 a month becomes ₹11,000 a month in year 2. Set 0% for a regular SIP.">i</button>
+            </div>
+            <input
+              type="number"
+              id="stepup"
+              value="10"
+              min="0"
+              max="50"
+              step="1"
+            />
+          </div>
+          <input
+            type="range"
+            id="stepup-range"
+            min="0"
+            max="50"
+            step="1"
+            value="10"
+            aria-label="Annual Step-up"
+          />
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <div class="label-wrap">
+              <label for="rate">Expected Annual Return (%)</label>
+              <button type="button" class="info" aria-label="About Expected Annual Return" data-info="The yearly return you expect from your investment, compounded monthly. Real returns are not guaranteed and vary from year to year.">i</button>
+            </div>
+            <input type="number" id="rate" value="12" min="0" step="0.5" />
+          </div>
+          <input
+            type="range"
+            id="rate-range"
+            min="1"
+            max="30"
+            step="0.5"
+            value="12"
+            aria-label="Expected Annual Return"
+          />
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <div class="label-wrap">
+              <label for="inflation">Inflation (%)</label>
+              <button type="button" class="info" aria-label="About Inflation" data-info="How fast prices rise each year. Used to work out what your final amount would be worth in today's money. Set 0% to ignore it.">i</button>
+            </div>
+            <input
+              type="number"
+              id="inflation"
+              value="6"
+              min="0"
+              max="15"
+              step="0.5"
+            />
+          </div>
+          <input
+            type="range"
+            id="inflation-range"
+            min="0"
+            max="15"
+            step="0.5"
+            value="6"
+            aria-label="Inflation"
+          />
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <div class="label-wrap">
+              <label for="years">Time Period (Years)</label>
+              <button type="button" class="info" aria-label="About Time Period" data-info="How many years you keep investing. All results are worked out at the end of this period.">i</button>
+            </div>
+            <input type="number" id="years" value="10" min="1" />
+          </div>
+          <input
+            type="range"
+            id="years-range"
+            min="1"
+            max="40"
+            step="1"
+            value="10"
+            aria-label="Time Period"
+          />
+        </div>
+
+        <div class="result">
+          <p>
+            <span class="label-wrap">Invested Amount
+              <button type="button" class="info" aria-label="About Invested Amount" data-info="Everything you put in: the lump sum plus all your monthly payments, including step-ups.">i</button>
+            </span>
+            <span id="invested">-</span>
+          </p>
+          <p>
+            <span class="label-wrap">Final-year Monthly SIP
+              <button type="button" class="info" aria-label="About Final-year Monthly SIP" data-info="What you invest each month in the last year, after all the step-ups. Same as your starting amount if step-up is 0%.">i</button>
+            </span>
+            <span id="final-sip">-</span>
+          </p>
+          <p>
+            <span class="label-wrap">Estimated Returns
+              <button type="button" class="info" aria-label="About Estimated Returns" data-info="What your money earned: Total Value minus Invested Amount.">i</button>
+            </span>
+            <span id="returns">-</span>
+          </p>
+          <p class="total">
+            <span class="label-wrap">Total Value
+              <button type="button" class="info" aria-label="About Total Value" data-info="The estimated value of your investment at the end of the period, before adjusting for inflation.">i</button>
+            </span>
+            <span id="total">-</span>
+          </p>
+          <p class="words"><span id="total-words"></span></p>
+          <p class="real">
+            <span class="label-wrap">In today's money
+              <button type="button" class="info" aria-label="About In today's money" data-info="Total Value adjusted for inflation: roughly what it could buy at today's prices.">i</button>
+            </span>
+            <span id="real">-</span>
+          </p>
+        </div>
+
+        <div class="card-actions">
+          <button type="button" class="ghost-btn" id="copy-link">Copy link</button>
+          <button type="button" class="ghost-btn" id="print">Print / Save PDF</button>
+          <a class="ghost-btn wide-link" id="compare-link" href="compare.html">Compare with another plan →</a>
+        </div>
+      </section>
+
+      <section class="card charts">
+        <div class="chart-block">
+          <div class="chart-head">
+            <h2>Growth over time</h2>
+            <div class="legend">
+              <span><i class="swatch line invested"></i>Invested</span>
+              <span><i class="swatch line value"></i>Total value</span>
+              <span><i class="swatch line real"></i>In today's money</span>
+            </div>
+          </div>
+          <div class="chart" id="line-chart"></div>
+        </div>
+
+        <div class="chart-block">
+          <div class="chart-head">
+            <h2>Breakdown</h2>
+          </div>
+          <div class="pie-wrap">
+            <div class="chart" id="pie-chart"></div>
+            <div class="legend vertical" id="pie-legend"></div>
+          </div>
+        </div>
+
+        <details class="table-block">
+          <summary>Year-by-year breakdown</summary>
+          <div class="details-body">
+          <div class="table-actions">
+            <button type="button" class="ghost-btn" id="download-csv">Download CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">Year-by-year SIP breakdown</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Year</th>
+                  <th scope="col">Monthly SIP</th>
+                  <th scope="col">Invested so far</th>
+                  <th scope="col">Value</th>
+                  <th scope="col">In today's money</th>
+                </tr>
+              </thead>
+              <tbody id="year-table"></tbody>
+            </table>
+          </div>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <div class="tooltip" id="tooltip" role="status"></div>
+    <script src="common.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
