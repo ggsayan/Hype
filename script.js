@@ -584,7 +584,7 @@ function calculateSIP() {
   document.getElementById("sec-after-box").classList.toggle("is-off", !swpOn);
   document
     .querySelectorAll(
-      "#withdrawal, #withdrawal-range, #withdrawal-today, #withdrawal-rise",
+      "#withdrawal, #withdrawal-today, #withdrawal-rise",
     )
     .forEach((node) => (node.disabled = !swpOn));
 
@@ -741,7 +741,7 @@ const thisYear = new Date().getFullYear();
 document.getElementById("startyear").defaultValue = thisYear; // Reset goes back to the current year
 document.getElementById("startyear").value = thisYear;
 loadFromURL(fields);
-wireSliders(fields, calculateSIP);
+wireInputs(fields, calculateSIP);
 ["swp-on", "withdrawal-today", "withdrawal-rise", "ltcg"].forEach((id) =>
   document.getElementById(id).addEventListener("change", calculateSIP),
 );

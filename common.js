@@ -832,16 +832,6 @@ function animateDetails(details) {
 }
 
 /**
- * Paint the filled part of a slider in the accent colour
- */
-function updateFill(range) {
-  const min = parseFloat(range.min);
-  const max = parseFloat(range.max);
-  const pct = ((parseFloat(range.value) - min) / (max - min)) * 100;
-  range.style.setProperty("--fill", pct + "%");
-}
-
-/**
  * Keep `value` within a number box's min and max (as text, "" left alone)
  */
 function clampToLimits(input, value) {
@@ -853,48 +843,47 @@ function clampToLimits(input, value) {
 }
 
 /**
- * Keep each number box (#id) and its slider (#id-range) in sync, calling onChange on every edit.
+ * Wire each number box (#id): call onChange on every edit and keep it within its limits.
  * A value above the box's max snaps down straight away; one below its min is corrected when
  * you leave the box, so you can still type e.g. "5000" one digit at a time.
  */
-function wireSliders(ids, onChange) {
+function wireInputs(ids, onChange) {
   ids.forEach((id) => {
     const number = document.getElementById(id);
-    const range = document.getElementById(id + "-range");
 
     number.addEventListener("input", () => {
       if (number.max !== "" && parseFloat(number.value) > parseFloat(number.max)) number.value = number.max;
-      if (range && number.value !== "") range.value = number.value; // slider clamps to its own min/max
-      if (range) updateFill(range);
       onChange();
     });
+
+    // Scrolling over the box nudges the value by one step (up for scroll up), within its limits
+    number.addEventListener(
+      "wheel",
+      (event) => {
+        if (number.disabled || event.deltaY === 0) return;
+        event.preventDefault();
+        const step = parseFloat(number.step) || 1;
+        const current = parseFloat(number.value);
+        let next = (isNaN(current) ? parseFloat(number.min) || 0 : current) + (event.deltaY < 0 ? step : -step);
+        next = Math.round(next / step) * step; // no drift from decimal steps like 0.5
+        number.value = clampToLimits(number, String(parseFloat(next.toFixed(6))));
+        number.dispatchEvent(new Event("input", { bubbles: true }));
+      },
+      { passive: false },
+    );
 
     number.addEventListener("change", () => {
       const fixed = clampToLimits(number, number.value);
       if (fixed === number.value) return;
       number.value = fixed;
-      if (range) {
-        range.value = fixed;
-        updateFill(range);
-      }
       onChange();
     });
-
-    if (!range) return;
-
-    range.addEventListener("input", () => {
-      number.value = range.value;
-      updateFill(range);
-      onChange();
-    });
-
-    updateFill(range);
   });
 }
 
 /**
  * Step-up can be a percentage or a fixed amount in rupees. A `.unit-toggle[data-unit-for="<id>"]`
- * switches the box #<id> (and its slider) between the two, with these limits.
+ * switches the box #<id> between the two, with these limits.
  */
 const STEP_UP_UNITS = {
   percent: { min: 0, max: 25, step: 1 },
@@ -919,13 +908,9 @@ function setStepUpUnit(id, unit, base) {
 
   const limits = STEP_UP_UNITS[unit];
   const number = document.getElementById(id);
-  const range = document.getElementById(id + "-range");
-  [number, range].forEach((node) => {
-    if (!node) return;
-    node.min = limits.min;
-    node.max = limits.max;
-    node.step = limits.step;
-  });
+  number.min = limits.min;
+  number.max = limits.max;
+  number.step = limits.step;
   number.setAttribute("aria-label", unit === "amount" ? "Step-up in rupees" : "Step-up in percent");
 
   if (base !== undefined && from !== unit && number.value !== "") {
@@ -933,10 +918,6 @@ function setStepUpUnit(id, unit, base) {
     const converted = unit === "amount" ? (base * v) / 100 : base > 0 ? (v / base) * 100 : 0;
     const snapped = Math.round(converted / limits.step) * limits.step;
     number.value = Math.min(limits.max, Math.max(limits.min, snapped));
-  }
-  if (range) {
-    range.value = number.value;
-    updateFill(range);
   }
 }
 
@@ -957,7 +938,7 @@ function wireStepUpUnits(baseOf, onChange) {
 }
 
 /**
- * Put every box and slider back to the value written in the HTML
+ * Put every box back to the value written in the HTML
  */
 function resetFields(ids) {
   document.querySelectorAll(".unit-toggle").forEach((t) => setStepUpUnit(t.dataset.unitFor, "percent"));
@@ -965,11 +946,6 @@ function resetFields(ids) {
   ids.forEach((id) => {
     const number = document.getElementById(id);
     number.value = number.defaultValue;
-    const range = document.getElementById(id + "-range");
-    if (range) {
-      range.value = range.defaultValue;
-      updateFill(range);
-    }
   });
 }
 
@@ -991,7 +967,7 @@ function saveToURL(ids) {
 }
 
 /**
- * Run before wireSliders so the sliders pick up the loaded values
+ * Run before wireInputs so the boxes start from the loaded values
  */
 function loadFromURL(ids) {
   const params = new URLSearchParams(location.search);
@@ -1008,8 +984,6 @@ function loadFromURL(ids) {
     if (value !== null && value !== "" && !isNaN(parseFloat(value))) {
       const input = document.getElementById(id);
       input.value = clampToLimits(input, value); // links can't go past the limits either
-      const range = document.getElementById(id + "-range");
-      if (range) range.value = input.value;
     }
   });
 }
