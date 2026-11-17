@@ -1,7 +1,7 @@
-const fields = ["amount", "stepup", "rate", "inflation", "years", "withdrawal"];
+const fields = ["amount", "stepup", "rate", "inflation", "years", "startyear", "withdrawal"];
 
+const LTCG = { rate: 0.125, exemption: 125000 }; // equity funds held over a year: 12.5% on gains above ₹1.25 lakh a year
 const MAX_WITHDRAWAL_YEARS = 50; // how far ahead withdrawals are followed
-const SHOWN_YEARS_IF_LASTING = 10; // years of withdrawals shown when the money never runs out
 const LINE_HEIGHT = { min: 200, max: 420 }; // the line chart fills the room it's given, within these
 
 const lineEl = document.getElementById("line-chart");
@@ -9,6 +9,7 @@ const pieEl = document.getElementById("pie-chart");
 const pieLegendEl = document.getElementById("pie-legend");
 
 let lastData = null; // most recent yearly series (investing, then any withdrawals), reused on resize or view change
+let startYear = new Date().getFullYear(); // the calendar year the first payment is made in
 let investYears = 0; // how many of those years are spent investing
 
 /**
@@ -48,13 +49,17 @@ function drawGrowthChart(data) {
 
   // Measure the room for the chart with the old drawing removed, so it can shrink as well as grow
   lineEl.innerHTML = "";
-  const height = Math.round(Math.min(LINE_HEIGHT.max, Math.max(LINE_HEIGHT.min, lineEl.clientHeight)));
+  const height = Math.round(
+    Math.min(LINE_HEIGHT.max, Math.max(LINE_HEIGHT.min, lineEl.clientHeight)),
+  );
 
   // What each year added and earned, in the current view
   const withdrawnKey = mode.withdrawnKey;
   const addedIn = (yr) => invested[yr] - invested[yr - 1];
-  const withdrawnIn = (yr) => data[yr][withdrawnKey] - data[yr - 1][withdrawnKey];
-  const grewIn = (yr) => values[yr] - values[yr - 1] - addedIn(yr) + withdrawnIn(yr);
+  const withdrawnIn = (yr) =>
+    data[yr][withdrawnKey] - data[yr - 1][withdrawnKey];
+  const grewIn = (yr) =>
+    values[yr] - values[yr - 1] - addedIn(yr) + withdrawnIn(yr);
 
   // The first year the money grew by more than was put in that year: compounding taking over
   let overtake = null;
@@ -67,19 +72,46 @@ function drawGrowthChart(data) {
 
   // Markers, most important first (the chart skips any that would overlap)
   const markers = [];
-  if (withdrawing && data[years].value === 0) markers.push({ x: years, value: 0, label: "Runs out", kind: "end" });
-  if (withdrawing) markers.push({ x: investYears, value: values[investYears], label: formatCompact(values[investYears]), kind: "peak" });
-  if (overtake) markers.push({ x: overtake, value: values[overtake], label: "Growth beats SIP", kind: "overtake" });
-  markers.push(...findMilestones(values.slice(0, investYears + 1), invested.slice(0, investYears + 1)));
+  if (withdrawing && data[years].value === 0)
+    markers.push({ x: years, value: 0, label: "Runs out", kind: "end" });
+  if (withdrawing)
+    markers.push({
+      x: investYears,
+      value: values[investYears],
+      label: formatCompact(values[investYears]),
+      kind: "peak",
+    });
+  if (overtake)
+    markers.push({
+      x: overtake,
+      value: values[overtake],
+      label: "Growth beats SIP",
+      kind: "overtake",
+    });
+  markers.push(
+    ...findMilestones(
+      values.slice(0, investYears + 1),
+      invested.slice(0, investYears + 1),
+    ),
+  );
 
   // Without withdrawals, label where the lines end: the value, what was put in, and the returns between
-  const signedCompact = (v) => (v < 0 ? "−" + formatCompact(-v) : "+" + formatCompact(v));
+  const signedCompact = (v) =>
+    v < 0 ? "−" + formatCompact(-v) : "+" + formatCompact(v);
   const ends = withdrawing
     ? null
     : {
         lines: [
-          { value: values[years], text: formatCompact(values[years]), cls: "chart-end-value" },
-          { value: invested[years], text: formatCompact(invested[years]), cls: "chart-end-invested" },
+          {
+            value: values[years],
+            text: formatCompact(values[years]),
+            cls: "chart-end-value",
+          },
+          {
+            value: invested[years],
+            text: formatCompact(invested[years]),
+            cls: "chart-end-invested",
+          },
         ],
         gap: [signedCompact(values[years] - invested[years]), "returns"],
       };
@@ -91,7 +123,9 @@ function drawGrowthChart(data) {
   const real = viewMode === "real";
   const monthlyLabel = (label) => (real ? label + " (avg.)" : label);
   const monthly = (exact, realTotal, rupeeTotal) =>
-    formatINR(real && rupeeTotal > 0 ? (exact * realTotal) / rupeeTotal : exact);
+    formatINR(
+      real && rupeeTotal > 0 ? (exact * realTotal) / rupeeTotal : exact,
+    );
 
   const series = [
     { values: invested, color: cssVar("--series-invested") },
@@ -104,14 +138,23 @@ function drawGrowthChart(data) {
     height,
     markers,
     ends,
-    divider: withdrawing ? { x: investYears, label: "Withdrawals start" } : null,
+    xLabel: (yr) => String(startYear + yr), // the calendar year at the start of that year
+    divider: withdrawing
+      ? { x: investYears, label: "Withdrawals start" }
+      : null,
     series,
     tooltip: (yr) => {
       const d = data[yr];
       const w = yr > investYears;
       const returns = values[yr] + d[withdrawnKey] - invested[yr];
       const notes = markers
-        .filter((mk) => mk.kind !== "end" && mk.kind !== "peak" && mk.x > yr - 1 && mk.x <= yr)
+        .filter(
+          (mk) =>
+            mk.kind !== "end" &&
+            mk.kind !== "peak" &&
+            mk.x > yr - 1 &&
+            mk.x <= yr,
+        )
         .map((mk) =>
           mk.kind === "overtake"
             ? "Growth beat your SIP for the first time"
@@ -121,19 +164,49 @@ function drawGrowthChart(data) {
         );
       const muted = "color:var(--muted)";
       return (
-        `<div class="tt-title">After ${yr} year${yr === 1 ? "" : "s"}${w ? " (withdrawing)" : ""}</div>` +
+        `<div class="tt-title">After ${yr} year${yr === 1 ? "" : "s"} (end of ${startYear + yr - 1})${w ? ", withdrawing" : ""}</div>` +
         tooltipRow("value", mode.valueLabel, formatINR(values[yr])) +
         tooltipRow("invested", "Invested", formatINR(invested[yr])) +
-        tooltipRow("", "Returns", `${formatINRSigned(returns)} (${formatPercent(gainPercent(invested[yr] + returns, invested[yr]))})`, muted) +
+        tooltipRow(
+          "",
+          "Returns",
+          `${formatINRSigned(returns)} (${formatPercent(gainPercent(invested[yr] + returns, invested[yr]))})`,
+          muted,
+        ) +
         (yr > 0
           ? `<div class="tt-sep"></div>` +
             (w
-              ? tooltipRow("", monthlyLabel("Withdrawing"), monthly(d.withdrawal, withdrawnIn(yr), d.withdrawn - data[yr - 1].withdrawn) + "/month", muted) +
-                tooltipRow("", "Withdrawn so far", formatINR(d[withdrawnKey]), muted)
-              : tooltipRow("", monthlyLabel("Monthly SIP"), monthly(d.payment, addedIn(yr), d.invested - data[yr - 1].invested), muted)) +
+              ? tooltipRow(
+                  "",
+                  monthlyLabel("Withdrawing"),
+                  monthly(
+                    d.withdrawal,
+                    withdrawnIn(yr),
+                    d.withdrawn - data[yr - 1].withdrawn,
+                  ) + "/month",
+                  muted,
+                ) +
+                tooltipRow(
+                  "",
+                  "Withdrawn so far",
+                  formatINR(d[withdrawnKey]),
+                  muted,
+                )
+              : tooltipRow(
+                  "",
+                  monthlyLabel("Monthly SIP"),
+                  monthly(
+                    d.payment,
+                    addedIn(yr),
+                    d.invested - data[yr - 1].invested,
+                  ),
+                  muted,
+                )) +
             tooltipRow("", "Grew this year", formatINRSigned(grewIn(yr)), muted)
           : "") +
-        notes.map((text) => `<div class="tt-row tt-milestone">${text}</div>`).join("")
+        notes
+          .map((text) => `<div class="tt-row tt-milestone">${text}</div>`)
+          .join("")
       );
     },
   });
@@ -155,34 +228,58 @@ function buildPie() {
   pieLegendEl.innerHTML = "";
   const mid = PIE_SIZE / 2;
 
-  const svg = el("svg", { width: PIE_SIZE, height: PIE_SIZE, viewBox: `0 0 ${PIE_SIZE} ${PIE_SIZE}`, role: "img", "aria-label": "Donut chart of invested amount versus returns" }, pieEl);
+  const svg = el(
+    "svg",
+    {
+      width: PIE_SIZE,
+      height: PIE_SIZE,
+      viewBox: `0 0 ${PIE_SIZE} ${PIE_SIZE}`,
+      role: "img",
+      "aria-label": "Donut chart of invested amount versus returns",
+    },
+    pieEl,
+  );
   const g = el("g", { transform: `rotate(-90 ${mid} ${mid})` }, svg);
 
   const segs = ["invested", "returns"].map((key) => {
-    const arc = el("circle", {
-      cx: mid,
-      cy: mid,
-      r: PIE_R,
-      fill: "none",
-      "stroke-width": PIE_STROKE,
-      "pointer-events": "stroke",
-      style: "cursor: default; transition: opacity 0.15s",
-    }, g);
+    const arc = el(
+      "circle",
+      {
+        cx: mid,
+        cy: mid,
+        r: PIE_R,
+        fill: "none",
+        "stroke-width": PIE_STROKE,
+        "pointer-events": "stroke",
+        style: "cursor: default; transition: opacity 0.15s",
+      },
+      g,
+    );
 
     arc.addEventListener("pointermove", (e) => {
       const state = pieEl._state;
       const value = state[key];
-      const label = key === "invested" ? "Invested" : VIEW_MODES[viewMode].returnsLabel;
-      svg.querySelectorAll("circle").forEach((other) => (other.style.opacity = other === arc ? 1 : 0.45));
+      const label =
+        key === "invested" ? "Invested" : VIEW_MODES[viewMode].returnsLabel;
+      svg
+        .querySelectorAll("circle")
+        .forEach((other) => (other.style.opacity = other === arc ? 1 : 0.45));
       showTooltip(
         tooltipRow(key, label, formatINRSigned(value)) +
-          tooltipRow("", "Share", ((value / state.total) * 100).toFixed(1) + "%", "color:var(--muted)"),
+          tooltipRow(
+            "",
+            "Share",
+            ((value / state.total) * 100).toFixed(1) + "%",
+            "color:var(--muted)",
+          ),
         e.clientX,
-        e.clientY
+        e.clientY,
       );
     });
     arc.addEventListener("pointerleave", () => {
-      svg.querySelectorAll("circle").forEach((other) => (other.style.opacity = 1));
+      svg
+        .querySelectorAll("circle")
+        .forEach((other) => (other.style.opacity = 1));
       hideTooltip();
     });
 
@@ -192,11 +289,25 @@ function buildPie() {
     row.innerHTML = `<i class="swatch ${key}"></i><span class="name"></span><span class="val"></span><span class="pct"></span>`;
     pieLegendEl.appendChild(row);
 
-    return { key, arc, name: row.querySelector(".name"), val: row.querySelector(".val"), pct: row.querySelector(".pct") };
+    return {
+      key,
+      arc,
+      name: row.querySelector(".name"),
+      val: row.querySelector(".val"),
+      pct: row.querySelector(".pct"),
+    };
   });
 
-  const centerLabel = el("text", { x: mid, y: mid - 6, "text-anchor": "middle", class: "pie-center-label" }, svg);
-  const center = el("text", { x: mid, y: mid + 14, "text-anchor": "middle", class: "pie-center-value" }, svg);
+  const centerLabel = el(
+    "text",
+    { x: mid, y: mid - 6, "text-anchor": "middle", class: "pie-center-label" },
+    svg,
+  );
+  const center = el(
+    "text",
+    { x: mid, y: mid + 14, "text-anchor": "middle", class: "pie-center-value" },
+    svg,
+  );
 
   pieEl._parts = { segs, center, centerLabel };
 }
@@ -209,9 +320,15 @@ function renderPie(share) {
   const lenInv = share * PIE_C;
   const lenRet = PIE_C - lenInv;
   const gap = lenInv > 1 && lenRet > 1 ? 2 : 0;
-  inv.arc.setAttribute("stroke-dasharray", `${Math.max(0, lenInv - gap)} ${PIE_C}`);
+  inv.arc.setAttribute(
+    "stroke-dasharray",
+    `${Math.max(0, lenInv - gap)} ${PIE_C}`,
+  );
   inv.arc.setAttribute("stroke-dashoffset", 0);
-  ret.arc.setAttribute("stroke-dasharray", `${Math.max(0, lenRet - gap)} ${PIE_C}`);
+  ret.arc.setAttribute(
+    "stroke-dasharray",
+    `${Math.max(0, lenRet - gap)} ${PIE_C}`,
+  );
   ret.arc.setAttribute("stroke-dashoffset", -lenInv);
   pieEl._shareShown = share;
 }
@@ -266,14 +383,20 @@ function drawPieChart(end) {
   }
 
   animateNumber(center, total, formatCompact);
-  segs.forEach((s) => animateNumber(s.val, pieEl._state[s.key], formatINRSigned));
+  segs.forEach((s) =>
+    animateNumber(s.val, pieEl._state[s.key], formatINRSigned),
+  );
 
   if (returns < 0) {
     setStaticText(segs[0].pct, "");
     setStaticText(segs[1].pct, "Didn't beat inflation");
   } else {
     segs.forEach((s) =>
-      animateNumber(s.pct, total > 0 ? (pieEl._state[s.key] / total) * 100 : 0, (p) => p.toFixed(1) + "% of total"),
+      animateNumber(
+        s.pct,
+        total > 0 ? (pieEl._state[s.key] / total) * 100 : 0,
+        (p) => p.toFixed(1) + "% of total",
+      ),
     );
   }
 }
@@ -312,16 +435,47 @@ const blankOr = (format) => (v) => (v === null ? "—" : format(v)); // "—" wh
 
 const TABLE_COLUMNS = [
   { label: "Year", get: (r) => r.year, show: String },
+  { label: "Calendar year", get: (r) => r.calendar, show: String },
   { label: "Monthly SIP", get: (r) => r.payment, show: blankOr(formatINR) },
-  { label: "Invested this year", get: (r) => r.investedThisYear, show: formatINR },
+  {
+    label: "Invested this year",
+    get: (r) => r.investedThisYear,
+    show: formatINR,
+  },
   { label: "Invested so far", get: (r) => r.invested, show: formatINR },
-  { label: "Withdrawn this year", get: (r) => r.withdrawnThisYear, show: blankOr(formatINR), withdrawalsOnly: true },
-  { label: "Returns this year", get: (r) => r.returnsThisYear, show: formatINRSigned },
+  {
+    label: "Withdrawn this year",
+    get: (r) => r.withdrawnThisYear,
+    show: blankOr(formatINR),
+    withdrawalsOnly: true,
+  },
+  {
+    label: "Tax paid",
+    get: (r) => r.taxThisYear,
+    show: formatINR,
+    withdrawalsOnly: true,
+    taxOnly: true,
+  },
+  {
+    label: "Returns this year",
+    get: (r) => r.returnsThisYear,
+    show: formatINRSigned,
+  },
   { label: "Returns so far", get: (r) => r.returns, show: formatINRSigned },
   { label: "Value", get: (r) => r.value, show: formatINR },
-  { label: "Gain", get: (r) => r.gain, show: formatPercent, csv: (v) => v.toFixed(1) + "%" },
+  {
+    label: "Gain",
+    get: (r) => r.gain,
+    show: formatPercent,
+    csv: (v) => v.toFixed(1) + "%",
+  },
   { label: "In today's money", get: (r) => r.real, show: formatINR },
-  { label: "Real gain", get: (r) => r.realGain, show: formatPercent, csv: (v) => v.toFixed(1) + "%" },
+  {
+    label: "Real gain",
+    get: (r) => r.realGain,
+    show: formatPercent,
+    csv: (v) => v.toFixed(1) + "%",
+  },
 ];
 
 /**
@@ -338,12 +492,15 @@ function tableRows(data) {
     const withdrawnThisYear = R(d.withdrawn) - R(prev.withdrawn);
     return {
       year,
+      calendar: startYear + year - 1,
       withdrawing,
       payment: withdrawing ? null : R(d.payment),
       investedThisYear,
       invested: R(d.invested),
       withdrawnThisYear: withdrawing ? withdrawnThisYear : null,
-      returnsThisYear: R(d.value) - R(prev.value) - investedThisYear + withdrawnThisYear,
+      taxThisYear: withdrawing ? Math.round(d.taxThisYear) : null,
+      returnsThisYear:
+        R(d.value) - R(prev.value) - investedThisYear + withdrawnThisYear,
       returns: R(d.value) + R(d.withdrawn) - R(d.invested),
       value: R(d.value),
       gain: gainPercent(d.value + d.withdrawn, d.invested),
@@ -358,7 +515,10 @@ function tableRows(data) {
  */
 function tableColumns() {
   const withdrawing = lastData && lastData.length - 1 > investYears;
-  return TABLE_COLUMNS.filter((col) => withdrawing || !col.withdrawalsOnly);
+  const taxed = taxOn();
+  return TABLE_COLUMNS.filter(
+    (col) => (withdrawing || !col.withdrawalsOnly) && (taxed || !col.taxOnly),
+  );
 }
 
 function drawTable(data) {
@@ -389,6 +549,28 @@ function drawTable(data) {
   });
 }
 
+const taxOn = () => document.getElementById("ltcg").checked;
+
+/**
+ * Tax, in its own boxes under Total Value: what selling everything at the end would cost, and,
+ * when withdrawals are on, the tax paid over the years (what is still invested is not taxed).
+ */
+function showTax(end, swp) {
+  const on = taxOn() && !!end;
+  document.getElementById("tax-box").hidden = !on;
+  document.getElementById("tax-swp").hidden = !swp;
+  if (!on) return;
+  const due = LTCG.rate * Math.max(0, end.value - end.invested - LTCG.exemption);
+  animateNumber(document.getElementById("tax-lump-value"), due, formatINR);
+  document.getElementById("tax-lump-words").textContent = `${formatINR(end.value - due)} left after tax`;
+  if (swp) {
+    const paid = swp.points[swp.points.length - 1].taxPaid;
+    animateNumber(document.getElementById("tax-swp-value"), paid, formatINR);
+    document.getElementById("tax-swp-words").textContent =
+      `over ${swp.points.length} years, from the money left`;
+  }
+}
+
 function calculateSIP() {
   const P = parseFloat(document.getElementById("amount").value);
   const annualRate = parseFloat(document.getElementById("rate").value);
@@ -396,14 +578,28 @@ function calculateSIP() {
   // Empty optional boxes mean "none"
   const stepUp = readOptional("stepup", 0);
   const inflation = readOptional("inflation", 0);
-  const withdrawal = readOptional("withdrawal", 0);
+  const swpOn = document.getElementById("swp-on").checked;
+  startYear = Math.round(readOptional("startyear", new Date().getFullYear()));
+  const withdrawal = swpOn ? readOptional("withdrawal", 0) : 0; // off: the typed amount is kept, but ignored
+  document.getElementById("sec-after-box").classList.toggle("is-off", !swpOn);
+  document
+    .querySelectorAll(
+      "#withdrawal, #withdrawal-range, #withdrawal-today, #withdrawal-rise",
+    )
+    .forEach((node) => (node.disabled = !swpOn));
 
   if (
     [P, annualRate, years, stepUp, inflation, withdrawal].some(isNaN) ||
-    P <= 0 || years <= 0 || annualRate < 0 || stepUp < 0 || inflation < 0 || withdrawal < 0
+    P <= 0 ||
+    years <= 0 ||
+    annualRate < 0 ||
+    stepUp < 0 ||
+    inflation < 0 ||
+    withdrawal < 0
   ) {
     showResults();
     showWithdrawals(null);
+    showTax(null);
     lastData = null;
     drawGrowthChart(null);
     drawPieChart(null);
@@ -413,26 +609,44 @@ function calculateSIP() {
 
   const i = annualRate / 12 / 100;
   const byAmount = stepUpUnit("stepup") === "amount";
-  lastData = simulateSIP(P, i, byAmount ? 0 : stepUp / 100, inflation / 100, years, byAmount ? stepUp : 0);
+  lastData = simulateSIP(
+    P,
+    i,
+    byAmount ? 0 : stepUp / 100,
+    inflation / 100,
+    years,
+    byAmount ? stepUp : 0,
+  );
   investYears = years;
 
   const end = lastData[years];
   // In today's money, the withdrawal is scaled up to what it costs when withdrawals start
   const inToday = document.getElementById("withdrawal-today").checked;
   const rise = document.getElementById("withdrawal-rise").checked;
-  const firstWithdrawal = inToday ? withdrawal * Math.pow(1 + inflation / 100, years) : withdrawal;
+  const firstWithdrawal = inToday
+    ? withdrawal * Math.pow(1 + inflation / 100, years)
+    : withdrawal;
   const swp =
     withdrawal > 0
-      ? simulateSWP(end, firstWithdrawal, i, inflation / 100, years, MAX_WITHDRAWAL_YEARS, rise)
+      ? simulateSWP(
+          end,
+          firstWithdrawal,
+          i,
+          inflation / 100,
+          years,
+          MAX_WITHDRAWAL_YEARS,
+          rise,
+          taxOn() ? LTCG : null,
+        )
       : null;
-  document.querySelector(".switches").hidden = !(withdrawal > 0); // only relevant with a withdrawal
+  document.querySelector(".switches").hidden = !(
+    readOptional("withdrawal", 0) > 0
+  ); // only relevant with a withdrawal
   if (swp) {
-    // Until the money runs out; if it never does, a few years are enough to show it keeps going
-    // (beyond that, the growing balance would dwarf the investing years on the chart)
-    if (!swp.ranOut) swp.points = swp.points.slice(0, SHOWN_YEARS_IF_LASTING);
     lastData = lastData.concat(swp.points);
   }
   showWithdrawals(swp);
+  showTax(end, swp);
   showWithdrawalNote(swp, withdrawal, inToday, rise, inflation);
   showResults({
     invested: end.invested,
@@ -456,6 +670,7 @@ function calculateSIP() {
  */
 function showWithdrawalNote(swp, typed, inToday, rise, inflation) {
   const note = document.getElementById("withdrawal-note");
+  if (!document.getElementById("swp-on").checked) return; // off: leave the note as it was, so nothing shifts
   note.hidden = !swp || (!inToday && !rise) || inflation === 0;
   if (note.hidden) return;
   const first = swp.points[0].withdrawal;
@@ -463,7 +678,9 @@ function showWithdrawalNote(swp, typed, inToday, rise, inflation) {
   const start = inToday
     ? `${formatINR(typed)} today is ${formatINR(first)} a month when withdrawals start`
     : `${formatINR(first)} a month to start`;
-  const when = swp.ranOut ? "in the final year" : `after ${swp.points.length} years`;
+  const when = swp.ranOut
+    ? "in the final year"
+    : `after ${swp.points.length} years`;
   note.textContent = rise
     ? `${start}, rising ${inflation}% a year to ${formatINR(last)} ${when}. ` +
       "It's raised once a year, so in today's money it slips slightly between raises."
@@ -477,11 +694,20 @@ function showWithdrawals(swp) {
   const group = document.getElementById("withdraw-group");
   group.hidden = !swp;
   if (!swp) return;
-  setStaticText(document.getElementById("lasts"), swp.ranOut ? formatDuration(swp.months) : `${MAX_WITHDRAWAL_YEARS}+ years`);
+  setStaticText(
+    document.getElementById("lasts"),
+    swp.ranOut
+      ? `${formatDuration(swp.months)} (to ${startYear + investYears + Math.floor((swp.months - 1) / 12)})`
+      : `${MAX_WITHDRAWAL_YEARS}+ years`,
+  );
   document.querySelector(".withdrawn-label").textContent = swp.ranOut
     ? "Total withdrawn"
-    : `Withdrawn in ${SHOWN_YEARS_IF_LASTING} years`;
-  animateNumber(document.getElementById("withdrawn"), swp.points[swp.points.length - 1].withdrawn, formatINR);
+    : `Withdrawn in ${MAX_WITHDRAWAL_YEARS} years`;
+  animateNumber(
+    document.getElementById("withdrawn"),
+    swp.points[swp.points.length - 1].withdrawn,
+    formatINR,
+  );
 }
 
 function downloadCSV() {
@@ -496,10 +722,14 @@ function downloadCSV() {
       }),
     );
   });
-  const csv = rows.map((r) => r.map((cell) => `"${cell}"`).join(",")).join("\r\n");
+  const csv = rows
+    .map((r) => r.map((cell) => `"${cell}"`).join(","))
+    .join("\r\n");
 
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  link.href = URL.createObjectURL(
+    new Blob([csv], { type: "text/csv;charset=utf-8" }),
+  );
   link.download = "sip-year-by-year.csv";
   document.body.appendChild(link);
   link.click();
@@ -507,10 +737,18 @@ function downloadCSV() {
   URL.revokeObjectURL(link.href);
 }
 
+const thisYear = new Date().getFullYear();
+document.getElementById("startyear").defaultValue = thisYear; // Reset goes back to the current year
+document.getElementById("startyear").value = thisYear;
 loadFromURL(fields);
 wireSliders(fields, calculateSIP);
-["withdrawal-today", "withdrawal-rise"].forEach((id) => document.getElementById(id).addEventListener("change", calculateSIP));
-wireStepUpUnits(() => parseFloat(document.getElementById("amount").value) || 0, calculateSIP);
+["swp-on", "withdrawal-today", "withdrawal-rise", "ltcg"].forEach((id) =>
+  document.getElementById(id).addEventListener("change", calculateSIP),
+);
+wireStepUpUnits(
+  () => parseFloat(document.getElementById("amount").value) || 0,
+  calculateSIP,
+);
 wireInfoIcons();
 wireCopyLink(document.getElementById("copy-link"), () => saveToURL(fields));
 
@@ -529,7 +767,8 @@ animateDetails(document.querySelector(".table-block"));
 // Tabs at the top of the charts switch both charts between total value and today's money
 wireViewTabs((mode) => {
   viewMode = mode;
-  document.getElementById("legend-value").textContent = VIEW_MODES[mode].valueLabel;
+  document.getElementById("legend-value").textContent =
+    VIEW_MODES[mode].valueLabel;
   drawGrowthChart(lastData);
   drawPieChart(pieEnd);
 });

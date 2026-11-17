@@ -93,9 +93,12 @@ function simulateSIP(P, i, stepUp, inflation, years, stepUpAmount = 0) {
  * then the withdrawal is taken out, until nothing is left or `maxYears` have passed.
  * The first year's withdrawal is `W` a month; with `rise`, it goes up by `inflation` every year after that.
  * `realWithdrawn` counts each withdrawal at its value in today's money.
+ * With `tax` ({ rate, exemption }), each withdrawal is part cost and part gain (average cost: the share of
+ * the balance that was put in is not taxed). A year's gains above the exemption are taxed once, at the end
+ * of the year, and the tax comes out of the money left (if none is left, it is still counted as owed).
  * Returns { points: one per year of withdrawals, months: withdrawals made, ranOut }.
  */
-function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false) {
+function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false, tax = null) {
   const points = [];
   let withdrawal = W;
   let value = start.value;
@@ -104,12 +107,18 @@ function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false) 
   let months = 0;
   let monthIndex = startYear * 12;
   let ranOut = false;
+  let basis = start.invested; // what is still invested, at cost
+  let taxPaid = 0;
 
   for (let yr = 1; yr <= maxYears && !ranOut; yr++) {
     if (yr > 1 && rise) withdrawal *= 1 + inflation;
+    let gains = 0;
     for (let month = 0; month < 12; month++) {
       value *= 1 + i;
       const take = Math.min(withdrawal, value);
+      const cost = value > 0 ? (basis * take) / value : 0;
+      gains += take - cost;
+      basis -= cost;
       value -= take;
       monthIndex++;
       withdrawn += take;
@@ -121,6 +130,18 @@ function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false) 
         break;
       }
     }
+    let taxThisYear = 0;
+    if (tax) {
+      taxThisYear = tax.rate * Math.max(0, gains - tax.exemption);
+      const pay = Math.min(taxThisYear, value);
+      if (value > 0) basis *= 1 - pay / value;
+      value -= pay;
+      taxPaid += taxThisYear;
+      if (value < 0.005 && !ranOut) {
+        value = 0;
+        ranOut = true;
+      }
+    }
     points.push({
       payment: 0,
       invested: start.invested,
@@ -130,6 +151,8 @@ function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false) 
       withdrawn,
       realWithdrawn,
       withdrawal, // monthly withdrawal this year
+      taxThisYear,
+      taxPaid,
     });
   }
   return { points, months, ranOut };
@@ -342,6 +365,7 @@ function setStaticText(node, text) {
  *   height:  optional chart height in pixels (default 240)
  *   markers: optional [{ x: fractional year, value, label }] — labelled dots on the lines
  *   divider: optional { x: year, label } — a dashed vertical line, e.g. where withdrawals start
+ *   xLabel: optional (year number) => text for the x axis (default "5y")
  *   ends:    optional { lines: [{ value, text, cls }], gap: [line1, line2] } — labels just past the
  *            right end of the lines, with a bracket between the two and `gap` written beside it
  *            (e.g. the final value, the amount invested, and the returns between them)
@@ -349,7 +373,7 @@ function setStaticText(node, text) {
  */
 function drawLineChart(
   container,
-  { years, series, tooltip, ariaLabel, yMax: fixedMax, height = 240, markers = [], divider = null, ends = null },
+  { years, series, tooltip, ariaLabel, yMax: fixedMax, height = 240, markers = [], divider = null, ends = null, xLabel = (yr) => (yr === 0 ? "0" : yr + "y") },
 ) {
   container.innerHTML = "";
   if (!series) return;
@@ -402,14 +426,14 @@ function drawLineChart(
 
   // X labels: about 8 at most
   const rawStep = Math.ceil(years / 8);
-  const xStep = [1, 2, 5, 10].find((s) => s >= rawStep) || 10;
+  const xStep = [1, 2, 5, 10, 20, 25].find((s) => s >= rawStep) || 25;
   for (let yr = 0; yr <= years; yr += xStep) {
     const label = el(
       "text",
       { x: x(yr), y: height - 6, "text-anchor": "middle" },
       svg,
     );
-    label.textContent = yr === 0 ? "0" : yr + "y";
+    label.textContent = xLabel(yr);
   }
 
   // Path through `values`, drawn against an axis whose top is `top` (changes during animation)

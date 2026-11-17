@@ -344,10 +344,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
     column-gap: 24px;
   }
 
-  .result-hero {
-    grid-column: 1 / -1;
-  }
-
   .result-group + .result-group {
     padding-top: 0;
     padding-left: 24px;
@@ -1136,4 +1132,66 @@ tbody tr.phase-start > * {
   stroke: var(--surface);
   stroke-width: 3px;
   stroke-linejoin: round;
+}
+
+.top-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.top-row .result-hero {
+  flex: 1 1 200px;
+}
+
+.tax-toggle-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.tax-box {
+  flex: 2 1 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.tax-box[hidden],
+.tax-line[hidden] {
+  display: none;
+}
+
+.tax-box .label-wrap {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tax-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 28px;
+}
+
+.tax-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tax-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tax-box .hero-value {
+  font-size: 22px;
+  color: var(--text);
 }

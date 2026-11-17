@@ -159,15 +159,29 @@
               aria-label="Time Period"
             />
           </div>
+
+          <div class="field">
+            <div class="field-head">
+              <div class="label-wrap">
+                <label for="startyear">Starting Year</label>
+                <button type="button" class="info" aria-label="About Starting Year" data-info="The calendar year your first payment is made, so the table and chart tooltips show real years. It doesn't change any amounts.">i</button>
+              </div>
+              <input type="number" id="startyear" value="2026" min="1990" max="2100" step="1" />
+            </div>
+          </div>
         </section>
 
-        <section class="input-section" aria-labelledby="sec-after">
+        <section class="input-section" id="sec-after-box" aria-labelledby="sec-after">
           <div class="section-head">
             <span class="section-step" aria-hidden="true">2</span>
             <div>
               <h2 class="section-title" id="sec-after">After investing <span class="section-tag">Optional</span></h2>
               <p class="section-sub">Withdraw a monthly amount once you stop investing</p>
             </div>
+            <label class="switch section-switch">
+              <input type="checkbox" role="switch" id="swp-on" data-url checked aria-label="Withdraw after investing" />
+              <span class="switch-track" aria-hidden="true"></span>
+            </label>
           </div>
 
           <div class="field">
@@ -215,11 +229,20 @@
             <p class="field-note" id="withdrawal-note" hidden></p>
           </div>
         </section>
+
       </section>
 
       <div class="side">
         <section class="card result" aria-label="Results">
           <!-- Headline: what the investment is worth at the end -->
+          <div class="tax-toggle-row">
+            <label class="switch">
+              <input type="checkbox" role="switch" id="ltcg" data-url />
+              <span class="switch-track" aria-hidden="true"></span>
+              Deduct capital gains tax
+            </label>
+          </div>
+          <div class="top-row">
           <div class="result-hero">
             <div class="hero-main">
               <span class="label-wrap">Total Value
@@ -227,6 +250,25 @@
               </span>
               <span class="hero-value" id="total">-</span>
               <span class="hero-words" id="total-words"></span>
+            </div>
+          </div>
+
+            <div class="tax-box" id="tax-box" hidden>
+              <span class="label-wrap">Capital gains tax
+                <button type="button" class="info" aria-label="About capital gains tax" data-info="Equity mutual funds held over a year pay 12.5% tax (LTCG) on gains above ₹1.25 lakh in a year. 'All at once' is what you would pay selling everything at the end of investing. 'With withdrawals' is the total paid over the years: each withdrawal is part cost, part gain, and the year's tax comes out of the money left, so Total withdrawn is before it. Simplified: every unit is treated as held over a year, and no surcharge or other income is counted.">i</button>
+              </span>
+              <div class="tax-lines">
+                <div class="tax-line" id="tax-lump">
+                  <span class="tax-sub">If sold all at once</span>
+                  <span class="hero-value" id="tax-lump-value">-</span>
+                  <span class="hero-words" id="tax-lump-words"></span>
+                </div>
+                <div class="tax-line" id="tax-swp" hidden>
+                  <span class="tax-sub">With withdrawals</span>
+                  <span class="hero-value" id="tax-swp-value">-</span>
+                  <span class="hero-words" id="tax-swp-words"></span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -282,13 +324,13 @@
             <h3 class="group-title" id="group-withdraw">Withdrawals</h3>
             <p>
               <span class="label-wrap">Money lasts
-                <button type="button" class="info" aria-label="About Money lasts" data-info="How long your monthly withdrawals can go on after you stop investing, before the money runs out, including any yearly rises. Checked for up to 50 years.">i</button>
+                <button type="button" class="info" aria-label="About Money lasts" data-info="How long your monthly withdrawals can go on after you stop investing, before the money runs out, including any yearly rises. Checked for up to 80 years.">i</button>
               </span>
               <span id="lasts">-</span>
             </p>
             <p>
               <span class="label-wrap"><span class="withdrawn-label">Total withdrawn</span>
-                <button type="button" class="info" aria-label="About Total withdrawn" data-info="Everything you take out until the money runs out. If it lasts more than 50 years, this covers the first 10, the same years shown in the chart and the table.">i</button>
+                <button type="button" class="info" aria-label="About Total withdrawn" data-info="Everything you take out until the money runs out. If it lasts more than 80 years, this covers all 80, the same years shown in the chart and the table.">i</button>
               </span>
               <span id="withdrawn">-</span>
             </p>
