@@ -78,7 +78,7 @@ function drawGrowthChart(data) {
     markers.push({
       x: investYears,
       value: values[investYears],
-      label: formatCompact(values[investYears]),
+      label: formatINR(values[investYears]),
       kind: "peak",
     });
   if (overtake)
@@ -97,19 +97,19 @@ function drawGrowthChart(data) {
 
   // Without withdrawals, label where the lines end: the value, what was put in, and the returns between
   const signedCompact = (v) =>
-    v < 0 ? "−" + formatCompact(-v) : "+" + formatCompact(v);
+    v < 0 ? "−" + formatINR(-v) : "+" + formatINR(v);
   const ends = withdrawing
     ? null
     : {
         lines: [
           {
             value: values[years],
-            text: formatCompact(values[years]),
+            text: formatINR(values[years]),
             cls: "chart-end-value",
           },
           {
             value: invested[years],
-            text: formatCompact(invested[years]),
+            text: formatINR(invested[years]),
             cls: "chart-end-invested",
           },
         ],
@@ -164,7 +164,7 @@ function drawGrowthChart(data) {
         );
       const muted = "color:var(--muted)";
       return (
-        `<div class="tt-title">After ${yr} year${yr === 1 ? "" : "s"} (end of ${startYear + yr - 1})${w ? ", withdrawing" : ""}</div>` +
+        `<div class="tt-title">After ${yr} year${yr === 1 ? "" : "s"} (${yr === 0 ? "start of " + startYear : "end of " + (startYear + yr - 1)})${w ? ", withdrawing" : ""}</div>` +
         tooltipRow("value", mode.valueLabel, formatINR(values[yr])) +
         tooltipRow("invested", "Invested", formatINR(invested[yr])) +
         tooltipRow(
@@ -382,7 +382,7 @@ function drawPieChart(end) {
     pieEl._anim = requestAnimationFrame(step);
   }
 
-  animateNumber(center, total, formatCompact);
+  animateNumber(center, total, formatINR);
   segs.forEach((s) =>
     animateNumber(s.val, pieEl._state[s.key], formatINRSigned),
   );
@@ -409,7 +409,6 @@ const resultFormats = {
   "final-sip": (v) => formatINR(v) + "/month",
   returns: formatINR,
   total: formatINR,
-  "total-words": formatWords,
   real: formatINR,
   gain: formatPercent,
   "real-gain": formatPercent,
@@ -423,7 +422,7 @@ function showResults(values) {
   for (const id in resultFormats) {
     const node = document.getElementById(id);
     if (values) animateNumber(node, values[id], resultFormats[id]);
-    else setStaticText(node, id === "total-words" ? "" : "-");
+    else setStaticText(node, "-");
   }
 }
 
@@ -452,7 +451,7 @@ const TABLE_COLUMNS = [
   {
     label: "Tax paid",
     get: (r) => r.taxThisYear,
-    show: formatINR,
+    show: blankOr(formatINR),
     withdrawalsOnly: true,
     taxOnly: true,
   },
@@ -580,7 +579,8 @@ function calculateSIP() {
   const inflation = readOptional("inflation", 0);
   const swpOn = document.getElementById("swp-on").checked;
   startYear = Math.round(readOptional("startyear", new Date().getFullYear()));
-  const withdrawal = swpOn ? readOptional("withdrawal", 0) : 0; // off: the typed amount is kept, but ignored
+  const typed = readOptional("withdrawal", 0); // kept (and its note shown) even while withdrawals are off
+  const withdrawal = swpOn ? typed : 0;
   document.getElementById("sec-after-box").classList.toggle("is-off", !swpOn);
   document
     .querySelectorAll(
@@ -624,10 +624,10 @@ function calculateSIP() {
   const inToday = document.getElementById("withdrawal-today").checked;
   const rise = document.getElementById("withdrawal-rise").checked;
   const firstWithdrawal = inToday
-    ? withdrawal * Math.pow(1 + inflation / 100, years)
-    : withdrawal;
-  const swp =
-    withdrawal > 0
+    ? typed * Math.pow(1 + inflation / 100, years)
+    : typed;
+  const preview =
+    typed > 0
       ? simulateSWP(
           end,
           firstWithdrawal,
@@ -639,21 +639,19 @@ function calculateSIP() {
           taxOn() ? LTCG : null,
         )
       : null;
-  document.querySelector(".switches").hidden = !(
-    readOptional("withdrawal", 0) > 0
-  ); // only relevant with a withdrawal
+  const swp = swpOn ? preview : null; // off: shown dimmed, but not part of the results
+  document.querySelector(".switches").hidden = !(typed > 0); // only relevant with a withdrawal
   if (swp) {
     lastData = lastData.concat(swp.points);
   }
   showWithdrawals(swp);
   showTax(end, swp);
-  showWithdrawalNote(swp, withdrawal, inToday, rise, inflation);
+  showWithdrawalNote(preview, typed, inToday, rise, inflation);
   showResults({
     invested: end.invested,
     "final-sip": end.payment,
-    returns: Math.round(end.value) - Math.round(end.invested), // adds up exactly to the rupees shown
+    returns: end.value - end.invested,
     total: end.value,
-    "total-words": end.value,
     real: end.real,
     gain: gainPercent(end.value, end.invested),
     "real-gain": gainPercent(end.real, end.realInvested),
@@ -670,7 +668,6 @@ function calculateSIP() {
  */
 function showWithdrawalNote(swp, typed, inToday, rise, inflation) {
   const note = document.getElementById("withdrawal-note");
-  if (!document.getElementById("swp-on").checked) return; // off: leave the note as it was, so nothing shifts
   note.hidden = !swp || (!inToday && !rise) || inflation === 0;
   if (note.hidden) return;
   const first = swp.points[0].withdrawal;

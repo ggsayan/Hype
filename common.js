@@ -1,11 +1,29 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+/**
+ * Rupees as an approximation: ₹850, ₹23.58K (thousand), ₹4.5L (lakh), ₹1.25Cr (crore)
+ */
 function formatINR(value) {
-  return "₹" + Math.round(value).toLocaleString("en-IN");
+  const trim = (n) => String(parseFloat(n.toFixed(2)));
+  const units = [
+    [1e7, "Cr"],
+    [1e5, "L"],
+    [1e3, "K"],
+  ];
+  for (let k = 0; k < units.length; k++) {
+    const [size, suffix] = units[k];
+    if (value < size) continue;
+    // Rounding can reach the next unit up (₹99.999L is ₹1Cr, not ₹100L)
+    if (k > 0 && parseFloat((value / size).toFixed(2)) >= units[k - 1][0] / size) {
+      return "₹" + trim(value / units[k - 1][0]) + units[k - 1][1];
+    }
+    return "₹" + trim(value / size) + suffix;
+  }
+  return Math.round(value) >= 1000 ? "₹1K" : "₹" + Math.round(value);
 }
 
 /**
- * "₹1,234" or "−₹1,234"
+ * "₹1.2K" or "−₹1.2K"
  */
 function formatINRSigned(v) {
   return v < -0.5 ? "−" + formatINR(-v) : formatINR(Math.max(0, v));
@@ -24,28 +42,6 @@ function formatPercent(value) {
  */
 function gainPercent(value, invested) {
   return invested > 0 ? ((value - invested) / invested) * 100 : 0;
-}
-
-/**
- * Short axis labels: ₹50K, ₹4.5L, ₹1.25Cr
- */
-function formatCompact(value) {
-  const trim = (n) => String(parseFloat(n.toFixed(2)));
-  if (value >= 1e7) return "₹" + trim(value / 1e7) + "Cr";
-  if (value >= 1e5) return "₹" + trim(value / 1e5) + "L";
-  if (value >= 1e3) return "₹" + trim(value / 1e3) + "K";
-  return "₹" + Math.round(value);
-}
-
-/**
- * Readable size in words: "₹33.74 lakh", "₹1.25 crore"
- */
-function formatWords(value) {
-  const trim = (n) => String(parseFloat(n.toFixed(2)));
-  if (value >= 1e7) return "₹" + trim(value / 1e7) + " crore";
-  if (value >= 1e5) return "₹" + trim(value / 1e5) + " lakh";
-  if (value >= 1e3) return "₹" + trim(value / 1e3) + " thousand";
-  return "";
 }
 
 /**
@@ -195,7 +191,7 @@ function findMilestones(values, invested, max = 3) {
   const found = [];
   MILESTONES.forEach((level) => {
     const x = firstCrossing((k) => values[k] - level);
-    if (x !== null) found.push({ x, value: level, label: formatCompact(level) });
+    if (x !== null) found.push({ x, value: level, label: formatINR(level) });
   });
   found.reverse(); // biggest first
 
@@ -421,7 +417,7 @@ function drawLineChart(
       { x: m.left - 8, y: y(v) + 4, "text-anchor": "end" },
       svg,
     );
-    label.textContent = formatCompact(v);
+    label.textContent = formatINR(v);
   }
 
   // X labels: about 8 at most

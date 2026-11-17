@@ -1147,3 +1147,13 @@ tbody tr.phase-start > * {
   font-size: 22px;
   color: var(--text);
 }
+
+.section-switch {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.input-section.is-off .field,
+.input-section.is-off .section-sub {
+  opacity: 0.45;
+}
