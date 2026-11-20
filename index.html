@@ -165,7 +165,7 @@
                   i
                 </button>
               </div>
-              <input type="number" id="years" value="10" min="1" max="50" />
+              <input type="number" id="years" value="10" min="1" max="40" />
             </div>
           </div>
 
@@ -185,7 +185,7 @@
               <input
                 type="number"
                 id="startyear"
-                value="2026"
+                value="2027"
                 min="1990"
                 max="2050"
                 step="1"
@@ -294,55 +294,52 @@
 
       <div class="side">
         <section class="card result" aria-label="Results">
-          <div class="tax-toggle-row">
+          <div class="view-bar">
+            <div class="tabs" role="tablist" aria-label="Show amounts as">
+              <button
+                type="button"
+                class="tab"
+                role="tab"
+                id="view-tab-total"
+                aria-selected="true"
+                data-mode="total"
+              >
+                Actual amounts
+              </button>
+              <button
+                type="button"
+                class="tab"
+                role="tab"
+                id="view-tab-real"
+                aria-selected="false"
+                data-mode="real"
+                tabindex="-1"
+              >
+                Adjusted for inflation
+              </button>
+            </div>
             <label class="switch">
               <input type="checkbox" role="switch" id="ltcg" data-url />
               <span class="switch-track" aria-hidden="true"></span>
               Deduct capital gains tax
             </label>
           </div>
-          <!-- Headline: what the investment is worth at the end, and the tax on it -->
+          <!-- Headline: what the investment is worth at the end -->
           <div class="top-row">
             <div class="result-hero">
               <div class="hero-main">
                 <span class="label-wrap"
-                  >Total Value
+                  ><span id="total-label">Total Value</span>
                   <button
                     type="button"
                     class="info"
                     aria-label="About Total Value"
-                    data-info="The estimated value of your investment at the end of the period, before adjusting for inflation."
+                    data-info="The estimated value of your investment at the end of the period. Under 'Adjusted for inflation' it is shown at today's prices: roughly what it could buy now."
                   >
                     i
                   </button>
                 </span>
                 <span class="hero-value" id="total">-</span>
-              </div>
-            </div>
-
-            <div class="tax-box" id="tax-box" hidden>
-              <span class="label-wrap"
-                >Capital gains tax
-                <button
-                  type="button"
-                  class="info"
-                  aria-label="About capital gains tax"
-                  data-info="Equity mutual funds held over a year pay 12.5% tax (LTCG) on gains above ₹1.25 lakh in a year. 'All at once' is what you would pay selling everything at the end of investing. 'With withdrawals' is the total paid over the years: each withdrawal is part cost, part gain, and the year's tax comes out of the money left, so Total withdrawn is before it. Simplified: every unit is treated as held over a year, and no surcharge or other income is counted."
-                >
-                  i
-                </button>
-              </span>
-              <div class="tax-lines">
-                <div class="tax-line" id="tax-lump">
-                  <span class="tax-sub">If sold all at once</span>
-                  <span class="hero-value" id="tax-lump-value">-</span>
-                  <span class="hero-words" id="tax-lump-words"></span>
-                </div>
-                <div class="tax-line" id="tax-swp" hidden>
-                  <span class="tax-sub">With withdrawals</span>
-                  <span class="hero-value" id="tax-swp-value">-</span>
-                  <span class="hero-words" id="tax-swp-words"></span>
-                </div>
               </div>
             </div>
           </div>
@@ -351,11 +348,11 @@
             <h3 class="group-title" id="group-invest">Your investment</h3>
             <p>
               <span class="label-wrap"
-                >Invested Amount
+                >Invested
                 <button
                   type="button"
                   class="info"
-                  aria-label="About Invested Amount"
+                  aria-label="About Invested"
                   data-info="Everything you put in: all your monthly payments, including step-ups."
                 >
                   i
@@ -365,11 +362,11 @@
             </p>
             <p>
               <span class="label-wrap"
-                >Final-year Monthly SIP
+                ><span class="final-sip-label">Final SIP</span>
                 <button
                   type="button"
                   class="info"
-                  aria-label="About Final-year Monthly SIP"
+                  aria-label="About Final SIP"
                   data-info="What you invest each month in the last year, after all the step-ups. Same as your starting amount if step-up is 0%."
                 >
                   i
@@ -383,12 +380,12 @@
             <h3 class="group-title" id="group-growth">Growth</h3>
             <p>
               <span class="label-wrap"
-                >Estimated Returns
+                >Returns
                 <button
                   type="button"
                   class="info"
-                  aria-label="About Estimated Returns"
-                  data-info="What your money earned: Total Value minus Invested Amount."
+                  aria-label="About Returns"
+                  data-info="What your money earned: Total Value minus what you invested."
                 >
                   i
                 </button>
@@ -402,7 +399,7 @@
                   type="button"
                   class="info"
                   aria-label="About Total Gain"
-                  data-info="How much your money grew overall: Estimated Returns as a percentage of Invested Amount."
+                  data-info="How much your money grew overall: Returns as a percentage of what you invested."
                 >
                   i
                 </button>
@@ -411,36 +408,37 @@
             </p>
           </section>
 
-          <section class="result-group" aria-labelledby="group-inflation">
-            <h3 class="group-title" id="group-inflation">After inflation</h3>
-            <p>
+          <section
+            class="result-group"
+            aria-labelledby="group-tax"
+            id="tax-box"
+            hidden
+          >
+            <h3 class="group-title" id="group-tax">
               <span class="label-wrap"
-                >In today's money
+                >LTCG tax
                 <button
                   type="button"
                   class="info"
-                  aria-label="About In today's money"
-                  data-info="Total Value adjusted for inflation: roughly what it could buy at today's prices."
+                  aria-label="About capital gains tax"
+                  data-info="Equity mutual funds held over a year pay 12.5% tax (LTCG) on gains above ₹1.25 lakh in a year. 'If sold all at once' is what you would pay selling everything at the end of investing. 'With SWP' is the total paid with monthly withdrawals over the years: each withdrawal is part cost, part gain, and the year's tax comes out of the money left, so Withdrawn is before it. Simplified: every unit is treated as held over a year, and no surcharge or other income is counted."
                 >
                   i
                 </button>
               </span>
-              <span id="real">-</span>
-            </p>
-            <p>
-              <span class="label-wrap"
-                >Real Gain
-                <button
-                  type="button"
-                  class="info"
-                  aria-label="About Real Gain"
-                  data-info="Total Gain after inflation: how much more your money can buy at the end than everything you put in, with each payment counted at its value in today's money."
-                >
-                  i
-                </button>
-              </span>
-              <span id="real-gain">-</span>
-            </p>
+            </h3>
+            <div id="tax-lump">
+              <p>
+                <span class="label-wrap">If sold all at once</span>
+                <span id="tax-lump-value">-</span>
+              </p>
+            </div>
+            <div id="tax-swp" hidden>
+              <p>
+                <span class="label-wrap">With SWP</span>
+                <span id="tax-swp-value">-</span>
+              </p>
+            </div>
           </section>
 
           <section
@@ -457,7 +455,7 @@
                   type="button"
                   class="info"
                   aria-label="About Money lasts"
-                  data-info="How long your monthly withdrawals can go on after you stop investing, before the money runs out, including any yearly rises. Checked for up to 80 years."
+                  data-info="How long your monthly withdrawals can go on after you stop investing, before the money runs out, including any yearly rises. Checked for up to 50 years."
                 >
                   i
                 </button>
@@ -466,12 +464,12 @@
             </p>
             <p>
               <span class="label-wrap"
-                ><span class="withdrawn-label">Total withdrawn</span>
+                >Withdrawn
                 <button
                   type="button"
                   class="info"
-                  aria-label="About Total withdrawn"
-                  data-info="Everything you take out until the money runs out. If it lasts more than 80 years, this covers all 80, the same years shown in the chart and the table."
+                  aria-label="About Withdrawn"
+                  data-info="Everything you take out until the money runs out. If it lasts more than 50 years, this covers all 50, the same years shown in the chart and the table."
                 >
                   i
                 </button>
@@ -482,52 +480,14 @@
         </section>
 
         <section class="card charts">
-          <!-- Switches both charts between total value and today's money -->
-          <div class="view-bar">
-            <div class="tabs" role="tablist" aria-label="Show values as">
-              <button
-                type="button"
-                class="tab"
-                role="tab"
-                id="view-tab-total"
-                aria-selected="true"
-                aria-controls="charts-panel"
-                data-mode="total"
-              >
-                Total value
-              </button>
-              <button
-                type="button"
-                class="tab"
-                role="tab"
-                id="view-tab-real"
-                aria-selected="false"
-                aria-controls="charts-panel"
-                data-mode="real"
-                tabindex="-1"
-              >
-                In today's money
-              </button>
-            </div>
-            <p class="view-note" id="view-note" hidden>
-              Adjusted for inflation. Each payment is counted at its value in
-              today's money when it was made.
-            </p>
-          </div>
-
-          <div
-            class="charts-panel"
-            id="charts-panel"
-            role="tabpanel"
-            aria-labelledby="view-tab-total"
-          >
+          <div class="charts-panel" id="charts-panel">
             <div class="chart-block">
               <div class="chart-head">
                 <h2>Growth over time</h2>
                 <div class="legend">
                   <span
                     ><i class="swatch line invested"></i
-                    ><span id="legend-invested">Invested</span></span
+                    ><span>Invested</span></span
                   >
                   <span
                     ><i class="swatch line value"></i
@@ -553,7 +513,7 @@
 
       <section class="card table-card">
         <details class="table-block">
-          <summary>Year-by-year breakdown</summary>
+          <summary id="table-title">Year-by-year breakdown</summary>
           <div class="details-body">
             <div class="table-actions">
               <button type="button" class="ghost-btn" id="download-csv">

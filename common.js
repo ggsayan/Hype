@@ -4,8 +4,12 @@ const SVG_NS = "http://www.w3.org/2000/svg";
  * Rupees as an approximation: ₹850, ₹23.58K (thousand), ₹4.5L (lakh), ₹1.25Cr (crore)
  */
 function formatINR(value) {
-  const trim = (n) => String(parseFloat(n.toFixed(2)));
+  // Fewer decimals as the number grows, so every amount stays short: ₹1.53L, ₹156.9Cr, ₹13,365Cr
+  const places = (n) => (n >= 1000 ? 0 : n >= 100 ? 1 : 2);
+  const round = (n) => parseFloat(n.toFixed(places(n)));
+  const short = (n) => round(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   const units = [
+    [1e12, "L Cr"],
     [1e7, "Cr"],
     [1e5, "L"],
     [1e3, "K"],
@@ -14,10 +18,10 @@ function formatINR(value) {
     const [size, suffix] = units[k];
     if (value < size) continue;
     // Rounding can reach the next unit up (₹99.999L is ₹1Cr, not ₹100L)
-    if (k > 0 && parseFloat((value / size).toFixed(2)) >= units[k - 1][0] / size) {
-      return "₹" + trim(value / units[k - 1][0]) + units[k - 1][1];
+    if (k > 0 && round(value / size) >= units[k - 1][0] / size) {
+      return "₹" + short(value / units[k - 1][0]) + units[k - 1][1];
     }
-    return "₹" + trim(value / size) + suffix;
+    return "₹" + short(value / size) + suffix;
   }
   return Math.round(value) >= 1000 ? "₹1K" : "₹" + Math.round(value);
 }
@@ -34,7 +38,9 @@ function formatINRSigned(v) {
  */
 function formatPercent(value) {
   const r = Math.round(value * 10) / 10;
-  return (r > 0 ? "+" : r < 0 ? "−" : "") + Math.abs(r).toFixed(1) + "%";
+  // Past 1,000% the decimal adds nothing
+  const n = Math.abs(r) >= 1000 ? Math.round(Math.abs(r)).toLocaleString("en-IN") : Math.abs(r).toFixed(1);
+  return (r > 0 ? "+" : r < 0 ? "−" : "") + n + "%";
 }
 
 /**
@@ -104,7 +110,6 @@ function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false, 
   let monthIndex = startYear * 12;
   let ranOut = false;
   let basis = start.invested; // what is still invested, at cost
-  let taxPaid = 0;
 
   for (let yr = 1; yr <= maxYears && !ranOut; yr++) {
     if (yr > 1 && rise) withdrawal *= 1 + inflation;
@@ -132,7 +137,6 @@ function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false, 
       const pay = Math.min(taxThisYear, value);
       if (value > 0) basis *= 1 - pay / value;
       value -= pay;
-      taxPaid += taxThisYear;
       if (value < 0.005 && !ranOut) {
         value = 0;
         ranOut = true;
@@ -148,20 +152,9 @@ function simulateSWP(start, W, i, inflation, startYear, maxYears, rise = false, 
       realWithdrawn,
       withdrawal, // monthly withdrawal this year
       taxThisYear,
-      taxPaid,
     });
   }
   return { points, months, ranOut };
-}
-
-/**
- * "23 years 4 months", "1 year", "5 months"
- */
-function formatDuration(months) {
-  const y = Math.floor(months / 12);
-  const m = months % 12;
-  const part = (n, word) => (n ? `${n} ${word}${n === 1 ? "" : "s"}` : "");
-  return [part(y, "year"), part(m, "month")].filter(Boolean).join(" ") || "0 months";
 }
 
 /**
@@ -354,22 +347,20 @@ function setStaticText(node, text) {
 /**
  * Draws a line chart into `container`.
  *   years:   number of years (x axis runs 0..years)
- *   series:  [{ values: [...one per year], color, dash?, area? }] — drawn in this order, last on top
- *            `dash` is an SVG dash pattern, e.g. "5 4" (dashed) or "2 4" (dotted)
+ *   series:  [{ values: [...one per year], color, area? }] — drawn in this order, last on top
  *   tooltip: (year) => HTML for the hover tooltip
- *   yMax:    optional top of the y axis, to give several charts the same scale
+ *   yCap:    optional highest the y axis may go; lines above it run off the top of the chart
  *   height:  optional chart height in pixels (default 240)
  *   markers: optional [{ x: fractional year, value, label }] — labelled dots on the lines
  *   divider: optional { x: year, label } — a dashed vertical line, e.g. where withdrawals start
- *   xLabel: optional (year number) => text for the x axis (default "5y")
+ *   xLabel:  (year number) => text for the x axis
  *   ends:    optional { lines: [{ value, text, cls }], gap: [line1, line2] } — labels just past the
  *            right end of the lines, with a bracket between the two and `gap` written beside it
  *            (e.g. the final value, the amount invested, and the returns between them)
- *   Series can also set `width` (line thickness, default 2).
  */
 function drawLineChart(
   container,
-  { years, series, tooltip, ariaLabel, yMax: fixedMax, height = 240, markers = [], divider = null, ends = null, xLabel = (yr) => (yr === 0 ? "0" : yr + "y") },
+  { years, series, tooltip, ariaLabel, yCap = Infinity, height = 240, markers = [], divider = null, ends = null, xLabel },
 ) {
   container.innerHTML = "";
   if (!series) return;
@@ -379,8 +370,8 @@ function drawLineChart(
   const w = width - m.left - m.right;
   const h = height - m.top - m.bottom;
 
-  const yMax =
-    fixedMax ?? niceMax(Math.max(...series.flatMap((s) => s.values)));
+  const highest = Math.max(...series.flatMap((s) => s.values));
+  const yMax = highest > yCap ? yCap : niceMax(highest);
   const x = (yr) => m.left + (yr / years) * w;
   const y = (v) => m.top + h - (v / yMax) * h;
 
@@ -446,6 +437,10 @@ function drawLineChart(
 
   // Soft area under any series that asks for it
   const defs = el("defs", {}, svg);
+  // Lines and areas stay inside the plot, so anything above the axis is cut off at the top
+  const plotClipId = `${container.id}-plot`;
+  el("rect", { x: 0, y: m.top, width, height: h + m.bottom }, el("clipPath", { id: plotClipId }, defs));
+  const plot = el("g", { "clip-path": `url(#${plotClipId})` }, svg);
   const areas = series.map((s, idx) => {
     if (!s.area) return null;
     const id = `${container.id}-area-${idx}`;
@@ -460,7 +455,7 @@ function drawLineChart(
       { offset: "100%", "stop-color": s.color, "stop-opacity": 0 },
       grad,
     );
-    return el("path", { fill: `url(#${id})` }, svg);
+    return el("path", { fill: `url(#${id})` }, plot);
   });
 
   const lines = series.map((s) =>
@@ -469,12 +464,11 @@ function drawLineChart(
       {
         fill: "none",
         stroke: s.color,
-        "stroke-width": s.width ?? 2,
+        "stroke-width": 2,
         "stroke-linejoin": "round",
         "stroke-linecap": "round",
-        ...(s.dash ? { "stroke-dasharray": s.dash } : {}),
       },
-      svg,
+      plot,
     ),
   );
 
@@ -584,6 +578,7 @@ function drawLineChart(
   const markerDelay = !prev && !reduceMotion() ? REVEAL_MS : changed ? CHART_ANIM_MS : 0;
   const taken = []; // label boxes drawn so far
   markers.forEach((mk) => {
+    if (mk.value > yMax) return; // off the top of the chart
     const g = el("g", { class: "chart-marker", style: `animation-delay: ${markerDelay}ms` }, svg);
     const mx = x(mk.x);
     const my = y(mk.value);
@@ -614,8 +609,8 @@ function drawLineChart(
     const [upper, lower] = [...ends.lines].sort((a, b) => b.value - a.value);
     const bx = x(years) + 8; // bracket
     const tx = bx + 9; // text
-    const yU = y(upper.value);
-    const yL = y(lower.value);
+    const yU = Math.max(m.top, y(upper.value)); // a line that ran off the top is labelled at the top
+    const yL = Math.max(m.top, y(lower.value));
     el(
       "path",
       {
@@ -658,27 +653,11 @@ function drawLineChart(
     hover,
   );
   const dots = series.map((s) =>
-    s.dash
-      ? el(
-          "circle",
-          {
-            r: 4,
-            fill: cssVar("--surface"),
-            stroke: s.color,
-            "stroke-width": 2,
-          },
-          hover,
-        )
-      : el(
-          "circle",
-          {
-            r: 4.5,
-            fill: s.color,
-            stroke: cssVar("--surface"),
-            "stroke-width": 2,
-          },
-          hover,
-        ),
+    el(
+      "circle",
+      { r: 4.5, fill: s.color, stroke: cssVar("--surface"), "stroke-width": 2 },
+      hover,
+    ),
   );
 
   const overlay = el(
@@ -721,7 +700,7 @@ function drawLineChart(
       Math.min(years, Math.round(((px - m.left) / w) * years)),
     );
 
-    goal = { x: x(yr), ys: series.map((s) => y(s.values[yr])) };
+    goal = { x: x(yr), ys: series.map((s) => Math.max(m.top, y(s.values[yr]))) };
     hover.setAttribute("visibility", "visible");
     if (!shown || reduceMotion()) {
       shown = { x: goal.x, ys: [...goal.ys] }; // first appearance: jump straight there
@@ -755,15 +734,12 @@ function onWidthChange(node, redraw) {
 }
 
 /**
- * The "Total value / In today's money" tabs in `.view-bar`, which control `#charts-panel`.
- * Calls `onChange(mode)` with "total" or "real" when the selected tab changes,
- * and shows `#view-note` only in the today's-money view.
+ * The "Actual amounts / Adjusted for inflation" tabs in `.view-bar`.
+ * Calls `onChange(mode)` with "total" or "real" when the selected tab changes.
  * Arrow keys move between tabs, as is usual for tab controls.
  */
 function wireViewTabs(onChange) {
   const tabs = [...document.querySelectorAll('.view-bar [role="tab"]')];
-  const panel = document.getElementById("charts-panel");
-  const note = document.getElementById("view-note");
 
   const select = (tab, focus = false) => {
     tabs.forEach((t) => {
@@ -771,8 +747,6 @@ function wireViewTabs(onChange) {
       t.setAttribute("aria-selected", on);
       t.tabIndex = on ? 0 : -1;
     });
-    panel.setAttribute("aria-labelledby", tab.id);
-    if (note) note.hidden = tab.dataset.mode !== "real";
     if (focus) tab.focus();
     onChange(tab.dataset.mode);
   };

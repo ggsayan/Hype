@@ -247,12 +247,6 @@ input[type="number"]:focus {
   font-variant-numeric: tabular-nums;
 }
 
-.hero-words {
-  min-height: 1.3em;
-  font-size: 12px;
-  color: var(--muted);
-}
-
 /* Groups of related results, each with a small heading */
 .result-group {
   margin-top: 18px;
@@ -288,19 +282,31 @@ input[type="number"]:focus {
   font-variant-numeric: tabular-nums;
 }
 
-/* With room to spare, the three groups sit side by side under the headline */
+/* With room to spare, the groups sit side by side under the headline */
 @container (min-width: 600px) {
-  /* Three groups, or four when withdrawals are shown */
+  /* Three columns, or four when tax and withdrawals are both shown */
   .result {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    column-gap: 24px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 36px;
   }
 
   .result-group + .result-group {
     padding-top: 0;
-    padding-left: 24px;
+    padding-left: 36px;
     border-top: none;
     border-left: 1px dashed var(--border);
+  }
+
+  /* Four groups: four snug columns */
+  .result:has(#tax-box:not([hidden])):has(#withdraw-group:not([hidden])) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 20px;
+  }
+
+  .result:has(#tax-box:not([hidden])):has(#withdraw-group:not([hidden]))
+    .result-group
+    + .result-group {
+    padding-left: 20px;
   }
 
   .result-group p {
@@ -314,6 +320,7 @@ input[type="number"]:focus {
   .result-group p span[id] {
     font-size: 17px;
     font-weight: 600;
+    white-space: nowrap;
   }
 }
 
@@ -670,7 +677,7 @@ tbody th {
   }
 }
 
-/* Tabs above the pie chart (segmented control) */
+/* View tabs at the top of the results (segmented control) */
 .tabs {
   display: inline-flex;
   gap: 2px;
@@ -709,20 +716,15 @@ tbody th {
   outline-offset: 1px;
 }
 
-/* Bar at the top of the charts card, holding the view tabs */
+/* Bar at the top of the results: the view tabs, and the tax switch beside them */
 .view-bar {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
-  margin-bottom: -8px;
-}
-
-.view-note {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--muted);
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 12px;
 }
 
 .charts-panel {
@@ -1097,55 +1099,11 @@ tbody tr.phase-start > * {
   flex: 1 1 200px;
 }
 
-.tax-toggle-row {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
-}
-
-.tax-box {
-  flex: 2 1 300px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 14px 16px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-
-.tax-box[hidden],
-.tax-line[hidden] {
-  display: none;
-}
-
-.tax-box .label-wrap {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.tax-lines {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 28px;
-}
-
-.tax-line {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.tax-sub {
+.lasts-year {
+  margin-left: 4px;
   font-size: 12px;
+  font-weight: 400;
   color: var(--muted);
-}
-
-.tax-box .hero-value {
-  font-size: 22px;
-  color: var(--text);
 }
 
 .section-switch {

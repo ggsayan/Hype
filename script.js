@@ -1,7 +1,16 @@
-const fields = ["amount", "stepup", "rate", "inflation", "years", "startyear", "withdrawal"];
+const fields = [
+  "amount",
+  "stepup",
+  "rate",
+  "inflation",
+  "years",
+  "startyear",
+  "withdrawal",
+];
 
 const LTCG = { rate: 0.125, exemption: 125000 }; // equity funds held over a year: 12.5% on gains above ₹1.25 lakh a year
 const MAX_WITHDRAWAL_YEARS = 50; // how far ahead withdrawals are followed
+const CHART_CAP = 1e11; // the growth chart's y axis tops out at ₹10,000Cr; anything higher runs off the top
 const LINE_HEIGHT = { min: 200, max: 420 }; // the line chart fills the room it's given, within these
 
 const lineEl = document.getElementById("line-chart");
@@ -9,12 +18,13 @@ const pieEl = document.getElementById("pie-chart");
 const pieLegendEl = document.getElementById("pie-legend");
 
 let lastData = null; // most recent yearly series (investing, then any withdrawals), reused on resize or view change
-let startYear = new Date().getFullYear(); // the calendar year the first payment is made in
+let startYear = new Date().getFullYear() + 1; // the calendar year the first payment is made in
 let investYears = 0; // how many of those years are spent investing
+let inflationPct = 0; // yearly inflation, in percent
 
 /**
- * The two views, chosen with the tabs at the top of the charts.
- * In today's money, every payment is counted at its value in today's money when it was made,
+ * The two views, chosen with the tabs at the top of the results; they change every amount, both charts and the table.
+ * Adjusted for inflation, every payment is counted at its value at today's prices when it was made,
  * so "Invested" and the value are in the same kind of rupees and can be compared directly.
  */
 const VIEW_MODES = {
@@ -28,7 +38,7 @@ const VIEW_MODES = {
   real: {
     valueKey: "real",
     investedKey: "realInvested",
-    valueLabel: "In today's money",
+    valueLabel: "Inflation-adjusted",
     returnsLabel: "Real returns",
     withdrawnKey: "realWithdrawn",
   },
@@ -136,6 +146,7 @@ function drawGrowthChart(data) {
     years,
     ariaLabel: `Line chart of amount invested and ${mode.valueLabel.toLowerCase()} by year`,
     height,
+    yCap: CHART_CAP,
     markers,
     ends,
     xLabel: (yr) => String(startYear + yr), // the calendar year at the start of that year
@@ -220,8 +231,6 @@ const PIE_SIZE = 180;
 const PIE_STROKE = 26;
 const PIE_R = (PIE_SIZE - PIE_STROKE) / 2;
 const PIE_C = 2 * Math.PI * PIE_R; // circumference
-
-let pieEnd = null; // final year of the latest calculation, reused when switching views
 
 function buildPie() {
   pieEl.innerHTML = "";
@@ -338,7 +347,6 @@ function renderPie(share) {
  */
 function drawPieChart(end) {
   cancelAnimationFrame(pieEl._anim);
-  pieEnd = end;
   if (!end) {
     pieEl.innerHTML = "";
     pieLegendEl.innerHTML = "";
@@ -406,12 +414,10 @@ function drawPieChart(end) {
  */
 const resultFormats = {
   invested: formatINR,
-  "final-sip": (v) => formatINR(v) + "/month",
+  "final-sip": (v) => formatINR(v) + "/mo",
   returns: formatINR,
   total: formatINR,
-  real: formatINR,
   gain: formatPercent,
-  "real-gain": formatPercent,
 };
 
 /**
@@ -468,13 +474,6 @@ const TABLE_COLUMNS = [
     show: formatPercent,
     csv: (v) => v.toFixed(1) + "%",
   },
-  { label: "In today's money", get: (r) => r.real, show: formatINR },
-  {
-    label: "Real gain",
-    get: (r) => r.realGain,
-    show: formatPercent,
-    csv: (v) => v.toFixed(1) + "%",
-  },
 ];
 
 /**
@@ -483,28 +482,43 @@ const TABLE_COLUMNS = [
  */
 function tableRows(data) {
   const R = Math.round;
+  const real = viewMode === "real";
+  const mode = VIEW_MODES[viewMode];
+  const inv = (d) => R(d[mode.investedKey]);
+  const wd = (d) => R(d[mode.withdrawnKey]);
+  const val = (d) => R(d[mode.valueKey]);
   return data.slice(1).map((d, idx) => {
     const year = idx + 1;
     const withdrawing = year > investYears;
     const prev = data[idx];
-    const investedThisYear = R(d.invested) - R(prev.invested);
-    const withdrawnThisYear = R(d.withdrawn) - R(prev.withdrawn);
+    const investedThisYear = inv(d) - inv(prev);
+    const withdrawnThisYear = wd(d) - wd(prev);
+    // Adjusted for inflation, the monthly SIP is the year's average, as in the chart tooltip
+    const added = d.invested - prev.invested;
+    const payment =
+      real && added > 0
+        ? (d.payment * (d.realInvested - prev.realInvested)) / added
+        : d.payment;
+    const tax = real
+      ? d.taxThisYear / Math.pow(1 + inflationPct / 100, investYears + year)
+      : d.taxThisYear;
     return {
       year,
       calendar: startYear + year - 1,
       withdrawing,
-      payment: withdrawing ? null : R(d.payment),
+      payment: withdrawing ? null : R(payment),
       investedThisYear,
-      invested: R(d.invested),
+      invested: inv(d),
       withdrawnThisYear: withdrawing ? withdrawnThisYear : null,
-      taxThisYear: withdrawing ? Math.round(d.taxThisYear) : null,
+      taxThisYear: withdrawing ? R(tax) : null,
       returnsThisYear:
-        R(d.value) - R(prev.value) - investedThisYear + withdrawnThisYear,
-      returns: R(d.value) + R(d.withdrawn) - R(d.invested),
-      value: R(d.value),
-      gain: gainPercent(d.value + d.withdrawn, d.invested),
-      real: R(d.real),
-      realGain: gainPercent(d.real + d.realWithdrawn, d.realInvested),
+        val(d) - val(prev) - investedThisYear + withdrawnThisYear,
+      returns: val(d) + wd(d) - inv(d),
+      value: val(d),
+      gain: gainPercent(
+        d[mode.valueKey] + d[mode.withdrawnKey],
+        d[mode.investedKey],
+      ),
     };
   });
 }
@@ -559,14 +573,27 @@ function showTax(end, swp) {
   document.getElementById("tax-box").hidden = !on;
   document.getElementById("tax-swp").hidden = !swp;
   if (!on) return;
-  const due = LTCG.rate * Math.max(0, end.value - end.invested - LTCG.exemption);
-  animateNumber(document.getElementById("tax-lump-value"), due, formatINR);
-  document.getElementById("tax-lump-words").textContent = `${formatINR(end.value - due)} left after tax`;
+  // Tax is worked out in rupees of the day it is paid; adjusted for inflation, it is shown at today's prices
+  const growth = 1 + inflationPct / 100;
+  const real = viewMode === "real";
+  const due =
+    LTCG.rate * Math.max(0, end.value - end.invested - LTCG.exemption);
+  const scale = real ? Math.pow(growth, investYears) : 1;
+  animateNumber(
+    document.getElementById("tax-lump-value"),
+    due / scale,
+    formatINR,
+  );
   if (swp) {
-    const paid = swp.points[swp.points.length - 1].taxPaid;
+    const paid = swp.points.reduce(
+      (sum, p, k) =>
+        sum +
+        (real
+          ? p.taxThisYear / Math.pow(growth, investYears + k + 1)
+          : p.taxThisYear),
+      0,
+    );
     animateNumber(document.getElementById("tax-swp-value"), paid, formatINR);
-    document.getElementById("tax-swp-words").textContent =
-      `over ${swp.points.length} years, from the money left`;
   }
 }
 
@@ -577,15 +604,14 @@ function calculateSIP() {
   // Empty optional boxes mean "none"
   const stepUp = readOptional("stepup", 0);
   const inflation = readOptional("inflation", 0);
+  inflationPct = inflation;
   const swpOn = document.getElementById("swp-on").checked;
-  startYear = Math.round(readOptional("startyear", new Date().getFullYear()));
+  startYear = Math.round(readOptional("startyear", new Date().getFullYear() + 1));
   const typed = readOptional("withdrawal", 0); // kept (and its note shown) even while withdrawals are off
   const withdrawal = swpOn ? typed : 0;
   document.getElementById("sec-after-box").classList.toggle("is-off", !swpOn);
   document
-    .querySelectorAll(
-      "#withdrawal, #withdrawal-today, #withdrawal-rise",
-    )
+    .querySelectorAll("#withdrawal, #withdrawal-today, #withdrawal-rise")
     .forEach((node) => (node.disabled = !swpOn));
 
   if (
@@ -644,22 +670,44 @@ function calculateSIP() {
   if (swp) {
     lastData = lastData.concat(swp.points);
   }
+  showView();
   showWithdrawals(swp);
   showTax(end, swp);
   showWithdrawalNote(preview, typed, inToday, rise, inflation);
+  const mode = VIEW_MODES[viewMode];
+  const prevYear = lastData[years - 1];
+  const addedLastYear = end.invested - prevYear.invested;
   showResults({
-    invested: end.invested,
-    "final-sip": end.payment,
-    returns: end.value - end.invested,
-    total: end.value,
-    real: end.real,
-    gain: gainPercent(end.value, end.invested),
-    "real-gain": gainPercent(end.real, end.realInvested),
+    invested: end[mode.investedKey],
+    "final-sip":
+      viewMode === "real" && addedLastYear > 0
+        ? (end.payment * (end.realInvested - prevYear.realInvested)) /
+          addedLastYear
+        : end.payment,
+    returns: end[mode.valueKey] - end[mode.investedKey],
+    total: end[mode.valueKey],
+    gain: gainPercent(end[mode.valueKey], end[mode.investedKey]),
   });
   drawTable(lastData);
   drawGrowthChart(lastData);
   drawPieChart(end);
   saveToURL(fields);
+}
+
+/**
+ * Labels that depend on the view: the headline and the table title
+ */
+function showView() {
+  const real = viewMode === "real";
+  document.getElementById("total-label").textContent = real
+    ? "Total Value (inflation-adjusted)"
+    : "Total Value";
+  document.querySelector(".final-sip-label").textContent = real
+    ? "Final SIP (avg.)"
+    : "Final SIP";
+  document.getElementById("table-title").textContent = real
+    ? "Year-by-year breakdown (inflation-adjusted)"
+    : "Year-by-year breakdown";
 }
 
 /**
@@ -684,6 +732,12 @@ function showWithdrawalNote(swp, typed, inToday, rise, inflation) {
     : `${start}, the same every year.`;
 }
 
+// Full years of withdrawals before the money runs out, e.g. "47 years"
+const lastsYears = (months) => {
+  const y = Math.floor(months / 12);
+  return y < 1 ? "<1 year" : `${y} year${y === 1 ? "" : "s"}`;
+};
+
 /**
  * The "Withdrawals" results, shown only when a monthly withdrawal is set
  */
@@ -691,18 +745,18 @@ function showWithdrawals(swp) {
   const group = document.getElementById("withdraw-group");
   group.hidden = !swp;
   if (!swp) return;
-  setStaticText(
-    document.getElementById("lasts"),
-    swp.ranOut
-      ? `${formatDuration(swp.months)} (to ${startYear + investYears + Math.floor((swp.months - 1) / 12)})`
-      : `${MAX_WITHDRAWAL_YEARS}+ years`,
-  );
-  document.querySelector(".withdrawn-label").textContent = swp.ranOut
-    ? "Total withdrawn"
-    : `Withdrawn in ${MAX_WITHDRAWAL_YEARS} years`;
+  // The calendar year it runs out in sits beside the years, smaller, so the column stays one line
+  const lasts = document.getElementById("lasts");
+  setStaticText(lasts, swp.ranOut ? lastsYears(swp.months) : `${MAX_WITHDRAWAL_YEARS}+ years`);
+  if (swp.ranOut) {
+    const year = document.createElement("small");
+    year.className = "lasts-year";
+    year.textContent = startYear + investYears + Math.floor((swp.months - 1) / 12);
+    lasts.append(year);
+  }
   animateNumber(
     document.getElementById("withdrawn"),
-    swp.points[swp.points.length - 1].withdrawn,
+    swp.points[swp.points.length - 1][VIEW_MODES[viewMode].withdrawnKey],
     formatINR,
   );
 }
@@ -734,9 +788,9 @@ function downloadCSV() {
   URL.revokeObjectURL(link.href);
 }
 
-const thisYear = new Date().getFullYear();
-document.getElementById("startyear").defaultValue = thisYear; // Reset goes back to the current year
-document.getElementById("startyear").value = thisYear;
+const nextYear = new Date().getFullYear() + 1;
+document.getElementById("startyear").defaultValue = nextYear; // Reset goes back to next year
+document.getElementById("startyear").value = nextYear;
 loadFromURL(fields);
 wireInputs(fields, calculateSIP);
 ["swp-on", "withdrawal-today", "withdrawal-rise", "ltcg"].forEach((id) =>
@@ -761,13 +815,12 @@ onWidthChange(lineEl, () => drawGrowthChart(lastData));
 // The year-by-year table slides open and closed
 animateDetails(document.querySelector(".table-block"));
 
-// Tabs at the top of the charts switch both charts between total value and today's money
+// Tabs at the top of the results switch every amount, both charts and the table between actual and inflation-adjusted
 wireViewTabs((mode) => {
   viewMode = mode;
   document.getElementById("legend-value").textContent =
     VIEW_MODES[mode].valueLabel;
-  drawGrowthChart(lastData);
-  drawPieChart(pieEnd);
+  calculateSIP();
 });
 
 calculateSIP(); // first drawing
