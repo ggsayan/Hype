@@ -1,0 +1,182 @@
+.result {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+/* Headline: total value at the end */
+.result-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.hero-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.result-hero .label-wrap {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hero-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Groups of related results, each with a small heading */
+.result-group {
+  margin-top: 18px;
+}
+
+.result-group + .result-group {
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+
+.result .group-title {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.result-group p {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.result-group p span[id] {
+  color: var(--text);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* With room to spare, the groups sit side by side under the headline */
+@container (min-width: 600px) {
+  /* Three columns, or four when tax and withdrawals are both shown */
+  .result {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 36px;
+  }
+
+  .result-group + .result-group {
+    padding-top: 0;
+    padding-left: 36px;
+    border-top: none;
+    border-left: 1px dashed var(--border);
+  }
+
+  /* Four groups: four snug columns */
+  .result:has(#tax-box:not([hidden])):has(#withdraw-group:not([hidden])) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 20px;
+  }
+
+  .result:has(#tax-box:not([hidden])):has(#withdraw-group:not([hidden]))
+    .result-group
+    + .result-group {
+    padding-left: 20px;
+  }
+
+  .result-group p {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    margin: 12px 0 0;
+    font-size: 13px;
+  }
+
+  .result-group p span[id] {
+    font-size: 17px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
+
+/* View tabs at the top of the results (segmented control) */
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.tab {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Bar at the top of the results: the view tabs, and the tax switch beside them */
+.view-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+
+.top-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.top-row .result-hero {
+  flex: 1 1 200px;
+}
+
+.lasts-year {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}

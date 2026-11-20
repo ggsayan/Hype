@@ -1,0 +1,98 @@
+.calc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.calc-head h1 {
+  margin: 0;
+}
+
+.head-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.layout {
+  width: 100%;
+  max-width: 1280px;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* On wide screens the inputs card and the column beside it end at the same height:
+   whichever is shorter stretches, with its last card (or the inputs card's buttons) taking up the slack.
+
+   Narrower, the charts stack and the right column gets much taller, so each side keeps its own height. */
+@media (min-width: 1180px) {
+  .layout {
+    align-items: stretch;
+  }
+
+  .side > .card:last-child {
+    flex: 1;
+  }
+}
+
+@media (min-width: 900px) {
+  body {
+    padding: 32px;
+  }
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* Navbar: logo and name on the left, "Copy link" on the right */
+.navbar {
+  width: 100%;
+  max-width: 1280px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand img {
+  display: block;
+  border-radius: 8px;
+}
+
+.nav-copy {
+  padding: 7px 12px;
+}
+
+/* The navbar lines up with the page below it */
+@media (max-width: 760px) {
+  .navbar {
+    max-width: 480px;
+  }
+}

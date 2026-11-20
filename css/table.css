@@ -1,0 +1,114 @@
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.table-card {
+  grid-column: 1 / -1;
+}
+
+.table-block summary {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 6px;
+}
+
+.table-block summary::-webkit-details-marker {
+  display: none;
+}
+
+.table-block summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+
+.table-block[open] summary::before {
+  transform: rotate(45deg);
+}
+
+.table-block summary:hover::before {
+  border-color: var(--accent);
+}
+
+.table-block summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.table-wrap {
+  margin-top: 8px;
+  overflow-x: auto; /* the whole table shows; only phones scroll it sideways */
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+th,
+td {
+  padding: 8px 8px;
+  text-align: right;
+}
+
+th:first-child,
+td:first-child {
+  padding-left: 12px;
+}
+
+th:last-child,
+td:last-child {
+  padding-right: 12px;
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+
+thead th {
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+tbody tr + tr > * {
+  border-top: 1px solid var(--grid);
+}
+
+tbody tr:hover > * {
+  background: var(--row-hover);
+}
+
+tbody th {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* The year-by-year table's sliding panel (see animateDetails in js/animate.js) */
+.details-body {
+  overflow: hidden;
+}
+
+/* Year-by-year table: a line where the withdrawal years start */
+tbody tr.phase-start > * {
+  border-top: 2px solid var(--accent) !important;
+}

@@ -1,0 +1,231 @@
+.charts {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.chart {
+  position: relative;
+  width: 100%;
+}
+
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+
+.chart text {
+  font-family: inherit;
+  font-size: 11px;
+  fill: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.swatch.line {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.swatch.invested {
+  background: var(--series-invested);
+}
+
+.swatch.value,
+.swatch.returns {
+  background: var(--series-value);
+}
+
+/* Pie with its legend beside it; on phones, and when the pie sits beside the line chart, the legend goes below */
+.pie-wrap {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
+@media (max-width: 420px) {
+  .pie-wrap {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .pie-wrap .legend {
+    width: 100%;
+    max-width: 260px;
+  }
+}
+
+.legend.vertical {
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.legend.vertical .row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.legend.vertical .val {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.legend.vertical .pct {
+  grid-column: 2 / 4;
+  margin-top: -6px;
+  font-size: 12px;
+}
+
+#pie-chart {
+  width: 180px;
+}
+
+.pie-center-label {
+  font-size: 11px;
+}
+
+.pie-center-value {
+  font-size: 16px !important;
+  font-weight: 700;
+  fill: var(--text) !important;
+}
+
+.charts-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* With room to spare, the pie sits beside the line chart */
+@container (min-width: 700px) {
+  .charts-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 32px;
+    align-items: stretch;
+  }
+
+  .pie-wrap {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 18px;
+  }
+
+  .pie-wrap .legend {
+    width: 100%;
+  }
+}
+
+/* When the charts card is stretched to match the inputs, the line chart grows into the extra room
+   (growth-chart.js measures #line-chart before drawing) */
+.charts > .charts-panel {
+  flex: 1;
+}
+
+.charts-panel > .chart-block:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+#line-chart {
+  flex: 1;
+  min-height: 200px;
+}
+
+/* Milestone markers on the growth chart */
+.chart .chart-marker-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.chart .chart-divider-label {
+  font-size: 10.5px;
+}
+
+@keyframes marker-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.chart-marker {
+  animation: marker-in 0.3s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-marker {
+    animation: none;
+  }
+}
+
+/* Growth chart: labels at the end of the lines */
+.chart .chart-end-value {
+  font-size: 11.5px;
+  font-weight: 700;
+  fill: var(--series-value);
+}
+
+.chart .chart-end-invested {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--series-invested);
+}
+
+.chart .chart-end-gap {
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.chart .chart-end-gap-note {
+  font-size: 10px;
+}
+
+/* A thin outline in the card colour keeps chart labels readable where they cross a line */
+.chart .chart-marker-label,
+.chart .chart-divider-label,
+.chart [class^="chart-end"] {
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}

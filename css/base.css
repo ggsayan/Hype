@@ -1,0 +1,233 @@
+:root {
+  color-scheme: dark;
+
+  --bg: #0a0a0b;
+  --surface: #141416;
+  --border: #26262b;
+  --grid: #1f1f23;
+  --text: #ededef;
+  --muted: #8b8b94;
+
+  --accent: #34d399;
+  --accent-glow: rgba(52, 211, 153, 0.18);
+
+  --tooltip-bg: #1c1c20;
+  --row-hover: #19191c;
+  --shadow: rgba(0, 0, 0, 0.45);
+
+  /* Chart series: invested is a quiet neutral, growth gets the accent */
+  --series-invested: #7c8594;
+  --series-value: var(--accent);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input,
+button {
+  font-family: inherit;
+}
+
+.ghost-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.ghost-btn:hover,
+.ghost-btn:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: none;
+}
+
+h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+body {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  margin: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 0;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font:
+    italic 600 10px/16px Georgia,
+    serif;
+  text-align: center;
+  cursor: help;
+  opacity: 0.7;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+
+.info:hover,
+.info:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  opacity: 1;
+  outline: none;
+}
+
+.tt-text {
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--tooltip-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text);
+  box-shadow: 0 6px 20px var(--shadow);
+  opacity: 0;
+  transition: opacity 0.1s;
+  min-width: 150px;
+  max-width: 240px;
+}
+
+.tooltip.show {
+  opacity: 1;
+}
+
+.tooltip .tt-title {
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.tooltip .tt-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.tooltip .tt-row b {
+  margin-left: auto;
+  padding-left: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cards fade and rise in when the page opens, one after another */
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card {
+  animation: card-in 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.side > .card:nth-child(1) {
+  animation-delay: 0.09s;
+}
+
+.side > .card:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.layout > .table-card {
+  animation-delay: 0.27s;
+}
+
+/* Respect "reduce motion" system settings */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}
+
+.tooltip .tt-milestone {
+  margin-top: 6px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tooltip .tt-sep {
+  margin: 6px 0 2px;
+  border-top: 1px solid var(--border);
+}
